@@ -35,9 +35,7 @@ function isFileProtocol() {
 function isSkippableHref(path) {
   return !path ||
     path.startsWith('#') ||
-    path.startsWith('mailto:') ||
-    path.startsWith('tel:') ||
-    path.startsWith('javascript:');
+    /^(?:mailto|tel|javascript|data|vbscript):/i.test(path);
 }
 
 function stripHtmlExtension(pathname) {
@@ -489,4 +487,3 @@ if (typeof window !== 'undefined') {
   window.routePath = routePath;
   window.rewriteInternalLinks = rewriteInternalLinks;
 }
-
