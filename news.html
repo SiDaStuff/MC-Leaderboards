@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News - MC Leaderboards</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="assets/fonts/local-fonts.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <i class="fas fa-trophy"></i> MC Leaderboards
+                <span class="beta-badge">BETA</span>
+            </a>
+            <div class="navbar-search-wrapper">
+                <div class="navbar-search">
+                    <i class="fas fa-search navbar-search-icon"></i>
+                    <input type="text"
+                           class="navbar-search-input"
+                           id="searchInput"
+                           placeholder="Search player..."
+                           autocomplete="off">
+                </div>
+            </div>
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a href="index.html">Leaderboards</a></li>
+                <li><a href="rules.html">Rules</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="news.html" class="active">News</a></li>
+                <li><a href="account.html">Account</a></li>
+                <li><a href="#" id="navLogout" onclick="handleLogout()">Logout</a></li>
+            </ul>
+            <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container" style="margin-top: 2rem; margin-bottom: 2rem;">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1 class="page-title">News</h1>
+            <p class="page-subtitle">Latest updates and announcements</p>
+        </div>
+
+        <!-- Create News Section (Admin Only) -->
+        <div id="createNewsSection" class="mb-4 d-none">
+            <button class="btn btn-primary" onclick="toggleCreateNewsForm()">
+                <i class="fas fa-plus"></i> Create News
+            </button>
+        </div>
+
+        <!-- Create News Form (Admin Only) -->
+        <div id="createNewsFormSection" class="card mb-4 d-none">
+            <div class="card-body">
+                <form id="createNewsForm">
+                    <div class="form-group mb-3">
+                        <label class="form-label" for="newsTitle">Title *</label>
+                        <input type="text" class="form-control" id="newsTitle" required maxlength="200" placeholder="Enter news title">
+                        <small class="text-muted">Maximum 200 characters</small>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="form-label" for="newsCoverImage">Cover Image</label>
+                        <input type="file" class="form-control" id="newsCoverImage" accept="image/*">
+                        <small class="text-muted">Optional. Will be auto-cropped and resized to 800x400. Max 5MB.</small>
+                    </div>
+
+                    <div class="form-group mb-4">
+                        <label class="form-label" for="newsContent">Content (Markdown) *</label>
+                        <textarea class="form-control" id="newsContent" rows="10" required placeholder="Write your news content here..."></textarea>
+                        <small class="text-muted">Use Markdown for formatting. Supports **bold**, *italic*, lists, etc.</small>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create News Post
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="toggleCreateNewsForm()">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- News List -->
+        <div id="newsContainer" class="row">
+            <!-- News items will be loaded here -->
+        </div>
+
+        <!-- Load More Button -->
+        <div id="loadMoreSection" class="text-center mt-4 d-none">
+            <button class="btn btn-outline-primary" onclick="loadMoreNews()">
+                <i class="fas fa-arrow-down"></i> Load More
+            </button>
+        </div>
+    </main>
+
+
+    <!-- Footer -->
+    <footer style="background-color: var(--secondary-bg); padding: 2rem 0; margin-top: 4rem; border-top: 1px solid var(--border-color);">
+        <div class="container text-center">
+            <div class="footer-links" style="margin-bottom: 0.75rem;">
+                <a href="rules.html">Rules</a>
+                <a href="privacy-policy.html">Privacy Policy</a>
+                <a href="terms-of-service.html">Terms of Service</a>
+                <a href="support.html">Support</a>
+                <a href="blacklisted.html">Blacklisted</a>
+            </div>
+            <p class="text-muted">MC Leaderboards &copy; 2024. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/dev-mode-toggle.js"></script>
+    <script src="js/firebase-service.js"></script>
+    <script src="js/app-state.js"></script>
+    <script src="js/api-service.js"></script>
+    <script src="js/player-search.js"></script>
+    <script src="js/firebase-auth-service.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/ui-enhancements.js"></script>
+    <script src="js/news.js"></script>
+</body>
+</html>

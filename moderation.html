@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moderation Controls - MC Leaderboards</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="css/moderation.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/loading-overlay.js"></script>
+
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+                <span class="beta-badge">BETA</span>
+            </a>
+            <div class="navbar-search-wrapper">
+                <div class="navbar-search">
+                    <i class="fas fa-search navbar-search-icon"></i>
+                    <input type="text" class="navbar-search-input" id="searchInput" placeholder="Search player..." autocomplete="off">
+                </div>
+            </div>
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a href="index.html">Leaderboards</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="account.html">Account</a></li>
+                <li><a href="#" id="navLogout" onclick="handleLogout()">Logout</a></li>
+            </ul>
+            <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="container moderation-page-shell">
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-user-shield"></i> Moderation Controls
+            </h1>
+            <p class="page-subtitle">Use your moderator and leaderboard moderation tools in one place.</p>
+        </div>
+
+        <section class="moderation-summary-card">
+            <div class="moderation-summary-copy">
+                <strong id="moderationSummaryTitle">Loading moderation access...</strong>
+                <p id="moderationSummaryText">Checking your current moderation permissions.</p>
+                <div class="moderation-role-badges" id="moderationRoleBadges"></div>
+            </div>
+        </section>
+
+        <section class="moderation-grid">
+            <div class="card moderation-card-shell" id="moderationChatCard">
+                <div class="card-header" style="background: linear-gradient(135deg, #1f2937, #111827); color: white; border: none;">
+                    <h2 class="card-title" style="color: white;">
+                        <i class="fas fa-comments"></i> Moderator
+                    </h2>
+                </div>
+                <div class="card-body moderation-card-body">
+                    <div class="moderation-card-intro" id="moderationChatIntro"></div>
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+                            <h3 style="margin:0;">Chat Reports</h3>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="loadModerationChatReports()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                        <div id="moderationChatReportsList" class="text-muted">Loading chat reports...</div>
+                    </div>
+                    <form id="moderationChatRestrictionForm" style="display:grid; gap:0.75rem;" onsubmit="submitModerationChatRestriction(event)">
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="moderationChatTarget">Player Username or User ID</label>
+                                <input class="form-input" id="moderationChatTarget" maxlength="120" placeholder="PlayerName or uid">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label" for="moderationChatDuration">Duration (hours)</label>
+                                <input class="form-input" id="moderationChatDuration" type="number" min="1" max="8760" value="24">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="form-label" for="moderationChatReason">Reason</label>
+                            <input class="form-input" id="moderationChatReason" maxlength="250" placeholder="Explain why chat access is being restricted">
+                        </div>
+                        <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+                            <button class="btn btn-warning" type="submit" id="moderationRestrictBtn">
+                                <i class="fas fa-comment-slash"></i> Restrict Chat
+                            </button>
+                            <button class="btn btn-secondary" type="button" id="moderationRestoreBtn" onclick="clearModerationChatRestriction()">
+                                <i class="fas fa-unlock"></i> Restore Chat
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card moderation-card-shell" id="leaderboardModerationCard">
+                <div class="card-header" style="background: linear-gradient(135deg, #0f172a, #1e293b); color: white; border: none;">
+                    <h2 class="card-title" style="color: white;">
+                        <i class="fas fa-filter"></i> Leaderboard Moderator
+                    </h2>
+                </div>
+                <div class="card-body moderation-card-body">
+                    <div class="moderation-card-intro" id="leaderboardModerationIntro"></div>
+                    <form id="leaderboardModerationForm" style="display:grid; gap:0.75rem;" onsubmit="submitLeaderboardFilter(event)">
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="leaderboardFilterTarget">Player Username or User ID</label>
+                                <input class="form-input" id="leaderboardFilterTarget" maxlength="120" placeholder="PlayerName or uid">
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="leaderboardFilterReason">Reason</label>
+                                <input class="form-input" id="leaderboardFilterReason" maxlength="250" placeholder="Optional moderation note">
+                            </div>
+                        </div>
+                        <label class="form-label" style="display:flex; align-items:center; gap:0.65rem;">
+                            <input type="checkbox" id="leaderboardFilterGlobal">
+                            <span>Hide from the global leaderboard</span>
+                        </label>
+                        <div>
+                            <div class="form-label">Hide from individual gamemodes</div>
+                            <div id="leaderboardGamemodeFilterGrid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:0.6rem;"></div>
+                        </div>
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-filter"></i> Save Leaderboard Filter
+                        </button>
+                    </form>
+                    <div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+                            <h3 style="margin:0;">Active Filters</h3>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="loadLeaderboardModerationFilters()">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                        <div id="leaderboardModeratorList" class="text-muted">Loading leaderboard filters...</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-links">
+                <a href="privacy-policy.html">Privacy Policy</a>
+                <a href="terms-of-service.html">Terms of Service</a>
+                <a href="support.html">Support</a>
+                <a href="blacklisted.html">Blacklisted</a>
+            </div>
+            <p class="footer-copyright">MC Leaderboards &copy; 2025. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/config.js" defer></script>
+    <script src="js/dev-mode-toggle.js" defer></script>
+    <script src="js/utils.js" defer></script>
+    <script src="js/firebase-service.js" defer></script>
+    <script src="js/app-state.js" defer></script>
+    <script src="js/api-service.js" defer></script>
+    <script src="js/global-error-handler.js" defer></script>
+    <script src="js/player-search.js" defer></script>
+    <script src="js/firebase-auth-service.js" defer></script>
+    <script src="js/auth-guard.js" defer></script>
+    <script src="js/navigation.js" defer></script>
+    <script src="js/ui-enhancements.js" defer></script>
+    <script src="js/auth-ui.js" defer></script>
+    <script src="js/moderation-controls.js" defer></script>
+</body>
+</html>

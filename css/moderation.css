@@ -1,0 +1,63 @@
+        .moderation-page-shell {
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .moderation-summary-card {
+            margin-bottom: 1.5rem;
+            padding: 1.4rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 18px;
+            background: linear-gradient(145deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.82));
+        }
+
+        .moderation-summary-copy {
+            display: grid;
+            gap: 0.55rem;
+        }
+
+        .moderation-summary-copy p {
+            margin: 0;
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        .moderation-role-badges {
+            display: flex;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+            color: white;
+        }
+
+        .moderation-grid {
+            display: grid;
+            gap: 1.25rem;
+        }
+
+        .moderation-card-shell {
+            display: none;
+        }
+
+        .moderation-card-shell.is-visible {
+            display: block;
+        }
+
+        .moderation-card-body {
+            display: grid;
+            gap: 1.1rem;
+        }
+
+        .moderation-card-intro {
+            color: #cbd5e1;
+            line-height: 1.6;
+        }
+
+        .moderation-highlight {
+            animation: moderationHighlight 1.8s ease;
+        }
+
+        @keyframes moderationHighlight {
+            0% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.3); }
+            45% { box-shadow: 0 0 0 12px rgba(96, 165, 250, 0.08); }
+            100% { box-shadow: 0 0 0 0 rgba(96, 165, 250, 0); }
+        }

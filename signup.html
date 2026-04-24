@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - MC Leaderboards</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="assets/fonts/local-fonts.css">
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/loading-overlay.js"></script>
+
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <nav class="navbar auth-simple-header">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+            </a>
+        </div>
+    </nav>
+
+    <main class="container auth-simple-shell">
+        <section class="card auth-simple-card">
+            <div class="card-header">
+                <h1 class="auth-simple-title">Sign Up</h1>
+                <p class="auth-simple-subtitle">Create your account, then verify your email.</p>
+            </div>
+            <div class="card-body">
+                <form id="signupForm" onsubmit="handleSignup(event)">
+                    <div class="form-group">
+                        <label class="form-label" for="email">Email</label>
+                        <input type="email"
+                               class="form-input"
+                               id="email"
+                               required
+                               autocomplete="email"
+                               placeholder="you@example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="password">Password</label>
+                        <input type="password"
+                               class="form-input"
+                               id="password"
+                               required
+                               autocomplete="new-password"
+                               minlength="6"
+                               placeholder="Password">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="confirmPassword">Confirm Password</label>
+                        <input type="password"
+                               class="form-input"
+                               id="confirmPassword"
+                               required
+                               autocomplete="new-password"
+                               placeholder="Confirm password">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="over13Checkbox">Age</label>
+                        <label style="display:flex; align-items:center; gap:0.65rem; padding:0.9rem 1rem; border:1px solid var(--border-color); border-radius:12px; background:var(--primary-bg); cursor:pointer;">
+                            <input type="checkbox" id="over13Checkbox" style="width:18px; height:18px; accent-color: var(--accent-color);">
+                            <span>I am over 13</span>
+                        </label>
+                    </div>
+
+                    <div class="auth-simple-actions">
+                        <button type="submit" class="btn btn-primary btn-block btn-lg" id="signupBtn">
+                            <i class="fas fa-user-plus"></i> Create Account
+                        </button>
+
+                        <button type="button" class="btn btn-secondary btn-block" id="googleSignupBtn" onclick="handleGoogleSignup(event)">
+                            <i class="fab fa-google"></i> Sign up with Google
+                        </button>
+                    </div>
+                </form>
+
+                <div class="auth-simple-footer">
+                    <p>Already have an account? <a href="login.html">Sign in</a></p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/dev-mode-toggle.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/firebase-service.js"></script>
+    <script src="js/app-state.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/api-service.js"></script>
+    <script src="js/firebase-auth-service.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/ui-enhancements.js"></script>
+    <script src="js/auth-ui.js"></script>
+    <script src="js/signup.js"></script>
+</body>
+</html>

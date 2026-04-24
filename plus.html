@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC Leaderboards Plus</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="assets/fonts/local-fonts.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/loading-overlay.js"></script>
+
+    <!-- Firebase SDK (compat) -->
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        :root {
+            --plus-gold: #f2c94c;
+            --plus-gold-2: #d9a441;
+            --plus-gold-3: #b8872b;
+            --plus-gray: rgba(255,255,255,0.08);
+        }
+
+        .plus-hero {
+            border: 1px solid rgba(242,201,76,0.25);
+            background: radial-gradient(1200px 500px at 20% 0%, rgba(242,201,76,0.18), transparent 55%),
+                        radial-gradient(900px 500px at 80% 10%, rgba(217,164,65,0.14), transparent 55%),
+                        rgba(255,255,255,0.03);
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+            overflow: hidden;
+            position: relative;
+        }
+        .plus-hero::after{
+            content: "";
+            position: absolute;
+            inset: -2px;
+            border-radius: 18px;
+            pointer-events: none;
+            background: linear-gradient(135deg, rgba(242,201,76,0.35), rgba(255,255,255,0.06), rgba(217,164,65,0.25));
+            mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+            padding: 1px;
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+
+        .plus-title {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .plus-title img {
+            width: 34px;
+            height: 34px;
+        }
+        .plus-title h1 {
+            margin: 0;
+            font-size: 2rem;
+            letter-spacing: 0.2px;
+        }
+        .plus-chip {
+            margin-left: 0.5rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.25rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.8rem;
+            border: 1px solid rgba(242,201,76,0.35);
+            background: rgba(242,201,76,0.10);
+            color: #ffe7a1;
+        }
+        .plus-price {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(90deg, var(--plus-gold), #fff, var(--plus-gold-2));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin: 0.75rem 0 0.25rem;
+        }
+        .plus-muted {
+            color: var(--text-muted);
+        }
+
+        .plus-card {
+            border: 1px solid rgba(242,201,76,0.18);
+            background: rgba(255,255,255,0.03);
+            border-radius: 14px;
+            padding: 1.25rem;
+        }
+        .plus-list li {
+            margin-bottom: 0.5rem;
+        }
+
+        .btn-plus {
+            background: linear-gradient(135deg, var(--plus-gold), var(--plus-gold-2));
+            color: #1a1c20;
+            font-weight: 800;
+            border: none;
+        }
+        .btn-plus:hover {
+            filter: brightness(1.05);
+            transform: translateY(-1px);
+            box-shadow: 0 10px 25px rgba(242,201,76,0.18);
+        }
+        .plus-input {
+            border: 1px solid rgba(242,201,76,0.22);
+            background: rgba(0,0,0,0.15);
+        }
+        .plus-input:focus {
+            outline: none;
+            border-color: rgba(242,201,76,0.55);
+            box-shadow: 0 0 0 3px rgba(242,201,76,0.12);
+        }
+        .plus-badge-preview {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.35rem 0.6rem;
+            border-radius: 999px;
+            border: 1px solid rgba(242,201,76,0.25);
+            background: rgba(242,201,76,0.08);
+        }
+        .plus-badge-preview img { width: 16px; height: 16px; }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+                <span class="beta-badge">BETA</span>
+            </a>
+            <div class="navbar-search-wrapper">
+                <div class="navbar-search">
+                    <i class="fas fa-search navbar-search-icon"></i>
+                    <input type="text"
+                           class="navbar-search-input"
+                           id="searchInput"
+                           placeholder="Search player..."
+                           autocomplete="off">
+                </div>
+            </div>
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a href="index.html">Leaderboards</a></li>
+                <li><a href="dashboard.html" id="navDashboard">Dashboard</a></li>
+                <li><a href="account.html" id="navAccount">Account</a></li>
+                <li><a href="plus.html" class="active">Plus</a></li>
+                <li><a href="login.html" id="navLogin">Login</a></li>
+                <li><a href="#" id="navLogout" class="d-none" onclick="handleLogout()">Logout</a></li>
+            </ul>
+            <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="container" style="margin-top: 2rem; margin-bottom: 2rem;">
+        <div class="plus-hero mb-4">
+            <div class="plus-title">
+                <img src="assets/plus-logo.svg" alt="Plus">
+                <h1>MC Leaderboards Plus <span class="plus-chip"><i class="fas fa-crown"></i> Plus</span></h1>
+            </div>
+            <p class="plus-muted" style="margin-top: 0.75rem; max-width: 900px;">
+                Enter a valid 6-digit Plus code to activate membership perks.
+            </p>
+            <p class="plus-muted" style="max-width: 900px;">
+                Codes are one-time use and can be issued by admins or earned through special events.
+            </p>
+
+            <div class="row" style="margin-top: 1.25rem;">
+                <div class="col-12 col-lg-7 mb-3">
+                    <div class="plus-card">
+                        <div class="plus-price">Redeem Code</div>
+                        <div class="plus-muted">Activate 1 year (or more) of Plus by entering your code below.</div>
+                        <div class="mt-3">
+                            <div class="form-group">
+                                <label class="form-label" for="plusRedeemCode">
+                                    6-digit Plus code
+                                </label>
+                                <input id="plusRedeemCode" maxlength="6" class="form-input plus-input" placeholder="123456" inputmode="numeric" autocomplete="one-time-code">
+                                <div class="form-help">Only digits are allowed. Each code can be used once.</div>
+                            </div>
+                            <button class="btn btn-plus" style="width:100%;" onclick="redeemPlusCode()">
+                                <i class="fas fa-key"></i> Redeem Plus Code
+                            </button>
+                            <div id="plusRedeemResult" class="form-help" style="text-align:center; margin-top: 0.6rem;"></div>
+                            <div class="form-help" style="text-align:center; margin-top: 0.5rem;">
+                                Need a code? Admin-issued codes and event rewards are supported.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-12 col-lg-5 mb-3">
+                    <div class="plus-card">
+                        <h3 style="margin-top:0; margin-bottom: 0.75rem;">
+                            <i class="fas fa-gem" style="color: var(--plus-gold);"></i> Perks
+                        </h3>
+                        <ul class="plus-list">
+                            <li><strong>Plus Badge</strong> next to your username on leaderboards <span class="plus-badge-preview"><img src="assets/badgeicons/plus.svg" alt="Plus"> Plus</span></li>
+                            <li><strong>Gradient username</strong> in the player popup (customizable)</li>
+                            <li><strong>Control</strong> whether to show the Plus badge from Account settings</li>
+                        </ul>
+                        <div class="alert" style="background: rgba(255,255,255,0.04); border: 1px solid rgba(242,201,76,0.18);">
+                            <i class="fas fa-info-circle" style="color: var(--plus-gold);"></i>
+                            Plus perks apply to your linked Minecraft username. You can link it on the Account page.
+                        </div>
+                        <a href="easteregg.html" class="btn btn-secondary" style="width:100%; margin-top:0.75rem;">
+                            <i class="fas fa-scroll"></i> Open Story Event Quest
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="footer-logo">
+                <span>MC Leaderboards</span>
+            </div>
+            <div class="footer-links">
+                <a href="rules.html">Rules</a>
+                <a href="/privacy-policy.html">Privacy Policy</a>
+                <a href="/terms-of-service.html">Terms of Service</a>
+                <a href="support.html">Support</a>
+                <a href="blacklisted.html">Blacklisted</a>
+            </div>
+            <p class="footer-copyright">MC Leaderboards &copy; 2025. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/dev-mode-toggle.js"></script>
+    <script src="js/firebase-service.js"></script>
+    <script src="js/app-state.js"></script>
+    <script src="js/api-service.js"></script>
+    <script src="js/player-search.js"></script>
+    <script src="js/firebase-auth-service.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/navigation.js"></script>
+    <script>
+        let redeemInFlight = false;
+
+        function sanitizeCodeInput(value) {
+            return String(value || '').replace(/\D/g, '').slice(0, 6);
+        }
+
+        async function redeemPlusCode() {
+            const input = document.getElementById('plusRedeemCode');
+            const resultEl = document.getElementById('plusRedeemResult');
+            if (!input || !resultEl) return;
+            if (redeemInFlight) return;
+
+            const redeemButton = input.closest('.plus-card')?.querySelector('.btn.btn-plus');
+
+            const code = sanitizeCodeInput(input.value);
+            input.value = code;
+
+            if (!AppState.isAuthenticated()) {
+                const goLogin = await Swal.fire({
+                    icon: 'info',
+                    title: 'Sign in required',
+                    text: 'Please sign in before redeeming a Plus code.',
+                    showCancelButton: true,
+                    confirmButtonText: 'Go to Login',
+                    cancelButtonText: 'Cancel'
+                });
+                if (goLogin.isConfirmed) window.location.href = 'login.html';
+                return;
+            }
+
+            if (!/^\d{6}$/.test(code)) {
+                resultEl.textContent = 'Enter a valid 6-digit code.';
+                resultEl.style.color = 'var(--danger-color)';
+                return;
+            }
+
+            resultEl.textContent = 'Redeeming code...';
+            resultEl.style.color = 'var(--text-muted)';
+            redeemInFlight = true;
+            input.disabled = true;
+            if (redeemButton) {
+                redeemButton.disabled = true;
+                redeemButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Redeeming...';
+            }
+
+            try {
+                const response = await apiService.redeemPlusCode(code);
+                await apiService.syncPlusToPlayer().catch(() => null);
+                resultEl.textContent = response?.message || 'Code redeemed successfully.';
+                resultEl.style.color = 'var(--success-color)';
+
+                Swal.fire({
+                    icon: 'success',
+                    title: response?.alreadyRedeemed ? 'Already Active' : 'Plus Activated',
+                    text: response?.alreadyRedeemed
+                        ? 'This code was already redeemed on your account and your Plus membership is still linked.'
+                        : 'Your Plus membership was activated successfully.'
+                });
+            } catch (error) {
+                resultEl.textContent = error.message || 'Unable to redeem this code.';
+                resultEl.style.color = 'var(--danger-color)';
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Redeem Failed',
+                    text: error.message || 'Unable to redeem this code.'
+                });
+            } finally {
+                redeemInFlight = false;
+                input.disabled = false;
+                if (redeemButton) {
+                    redeemButton.disabled = false;
+                    redeemButton.innerHTML = '<i class="fas fa-key"></i> Redeem Plus Code';
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const codeInput = document.getElementById('plusRedeemCode');
+            if (codeInput) {
+                codeInput.addEventListener('input', () => {
+                    codeInput.value = sanitizeCodeInput(codeInput.value);
+                });
+                codeInput.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter') {
+                        event.preventDefault();
+                        redeemPlusCode();
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+

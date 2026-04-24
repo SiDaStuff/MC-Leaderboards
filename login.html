@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - MC Leaderboards</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="assets/fonts/local-fonts.css">
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/loading-overlay.js"></script>
+
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <div id="loginAuthOverlay" class="login-auth-overlay" aria-hidden="true">
+        <div class="login-auth-overlay__panel" role="status" aria-live="polite" aria-busy="true">
+            <div class="login-auth-overlay__brand">
+                <div class="login-auth-overlay__logo-shell">
+                    <img src="assets/vanilla.svg" alt="MC Leaderboards" class="login-auth-overlay__logo">
+                </div>
+                <p class="login-auth-overlay__eyebrow">Secure Session</p>
+            </div>
+            <div class="login-auth-overlay__spinner" aria-hidden="true"></div>
+            <h2 id="loginAuthOverlayTitle" class="login-auth-overlay__title">Securing your sign-in</h2>
+            <p id="loginAuthOverlayDetail" class="login-auth-overlay__detail">Please wait while we verify your link and finish signing you in.</p>
+        </div>
+    </div>
+
+    <nav class="navbar auth-simple-header">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+            </a>
+        </div>
+    </nav>
+
+    <main class="container auth-simple-shell">
+        <section class="card auth-simple-card">
+            <div class="card-header">
+                <h1 class="auth-simple-title">Sign In</h1>
+                <p class="auth-simple-subtitle">Use your account email and password.</p>
+            </div>
+            <div class="card-body">
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label class="form-label" for="email">Email</label>
+                        <input type="email"
+                               class="form-input"
+                               id="email"
+                               required
+                               autocomplete="email"
+                               placeholder="you@example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="password">Password</label>
+                        <input type="password"
+                               class="form-input"
+                               id="password"
+                               required
+                               autocomplete="current-password"
+                               placeholder="Password">
+                    </div>
+
+                    <div class="auth-simple-actions">
+                        <button type="submit" class="btn btn-primary btn-block btn-lg" id="loginBtn">
+                            <i class="fas fa-right-to-bracket"></i> Sign In
+                        </button>
+
+                        <button type="button" class="btn btn-secondary btn-block" id="googleLoginBtn" onclick="handleGoogleLogin(event)">
+                            <i class="fab fa-google"></i> Sign in with Google
+                        </button>
+                    </div>
+                </form>
+
+                <div class="auth-simple-footer">
+                    <p><a href="auth-action.html" class="auth-link-inline"><i class="fas fa-key"></i> Forgot password?</a></p>
+                    <p>Need an account? <a href="signup.html">Sign up</a></p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/dev-mode-toggle.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/firebase-service.js"></script>
+    <script src="js/app-state.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/api-service.js"></script>
+    <script src="js/firebase-auth-service.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/ui-enhancements.js"></script>
+    <script src="js/auth-ui.js"></script>
+    <script src="js/login.js"></script>
+</body>
+</html>

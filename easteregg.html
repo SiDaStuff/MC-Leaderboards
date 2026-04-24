@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Story Event Quest - MC Leaderboards</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="assets/fonts/local-fonts.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <style>
+        .quest-shell {
+            border: 1px solid rgba(92, 210, 169, 0.28);
+            border-radius: 16px;
+            padding: 1.5rem;
+            background:
+                radial-gradient(900px 420px at 10% 0%, rgba(92, 210, 169, 0.15), transparent 55%),
+                radial-gradient(900px 420px at 90% 10%, rgba(242, 201, 76, 0.12), transparent 55%),
+                rgba(255, 255, 255, 0.02);
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.3);
+        }
+
+        .quest-header h1 {
+            margin: 0;
+            font-size: 2rem;
+        }
+
+        .quest-sub {
+            color: var(--text-muted);
+            margin-top: 0.65rem;
+        }
+
+        .quest-grid {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 1rem;
+            margin-top: 1.25rem;
+        }
+
+        .quest-card {
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.18);
+        }
+
+        .quest-story {
+            white-space: pre-line;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        .quest-riddle {
+            margin-top: 1rem;
+            padding: 0.85rem;
+            border-radius: 10px;
+            border: 1px solid rgba(92, 210, 169, 0.35);
+            background: rgba(92, 210, 169, 0.08);
+            color: var(--text-primary);
+        }
+
+        .quest-events {
+            max-height: 380px;
+            overflow-y: auto;
+            display: grid;
+            gap: 0.6rem;
+        }
+
+        .quest-event {
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.75rem;
+            background: var(--secondary-bg);
+        }
+
+        .quest-event.done {
+            border-color: rgba(92, 210, 169, 0.4);
+            background: rgba(92, 210, 169, 0.1);
+        }
+
+        .quest-reward {
+            margin-top: 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(242, 201, 76, 0.3);
+            background: rgba(242, 201, 76, 0.08);
+            padding: 0.9rem;
+        }
+
+        .reward-code {
+            display: inline-flex;
+            gap: 0.35rem;
+            align-items: center;
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: 0.15em;
+            color: #ffe7a1;
+            margin-top: 0.45rem;
+        }
+
+        @media (max-width: 900px) {
+            .quest-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+                <span class="beta-badge">BETA</span>
+            </a>
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a href="index.html">Leaderboards</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="account.html">Account</a></li>
+                <li><a href="plus.html">Plus</a></li>
+                <li><a href="login.html" id="navLogin">Login</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container" style="margin-top: 2rem; margin-bottom: 2rem;">
+        <section class="quest-shell">
+            <div class="quest-header">
+                <h1><i class="fas fa-scroll" style="color: var(--accent-color);"></i> The Shattered Crown</h1>
+                <p class="quest-sub">A long-form event puzzle. Finish every chapter to earn a one-time 6-digit Plus code for one free year.</p>
+            </div>
+
+            <div class="quest-grid">
+                <div class="quest-card">
+                    <h3 style="margin-top:0;">Current Chapter</h3>
+                    <div id="questProgress" class="text-muted">Loading progress...</div>
+                    <div id="questStory" class="quest-story" style="margin-top:0.75rem;"></div>
+                    <div id="questRiddle" class="quest-riddle" style="display:none;"></div>
+
+                    <div style="margin-top: 1rem; display:flex; gap:0.6rem; flex-wrap:wrap;">
+                        <input id="questAnswer" class="form-input" placeholder="Enter your answer" style="max-width: 280px;">
+                        <button id="questSubmitBtn" class="btn btn-primary" onclick="submitQuestAnswer()">
+                            <i class="fas fa-key"></i> Submit Answer
+                        </button>
+                    </div>
+
+                    <div class="quest-reward" id="questRewardCard" style="display:none;"></div>
+                </div>
+
+                <div class="quest-card">
+                    <h3 style="margin-top:0;">Event Timeline</h3>
+                    <div id="questEvents" class="quest-events"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/dev-mode-toggle.js"></script>
+    <script src="js/firebase-service.js"></script>
+    <script src="js/app-state.js"></script>
+    <script src="js/api-service.js"></script>
+    <script src="js/firebase-auth-service.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/easteregg.js"></script>
+</body>
+</html>

@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Player - Redirecting</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="assets/fonts/local-fonts.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/loading-overlay.js"></script>
+
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+    <script>
+        (function redirectLegacyReportPage() {
+            const params = new URLSearchParams(window.location.search);
+            if (!params.get('category')) {
+                params.set('category', 'player_report');
+            }
+            window.location.replace(`support.html?${params.toString()}`);
+        })();
+    </script>
+    <noscript>
+        <meta http-equiv="refresh" content="0; url=support.html?category=player_report">
+    </noscript>
+
+    <style>
+        .report-content {
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .report-templates {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .template-option {
+            background: var(--tertiary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .template-option:hover {
+            border-color: var(--accent-color);
+            transform: translateY(-1px);
+        }
+
+        .template-option.selected {
+            border-color: var(--success-color);
+            background: rgba(16, 185, 129, 0.12);
+        }
+
+        .template-option-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            color: var(--text-primary);
+        }
+
+        .template-option-desc {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .form-help-text {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 0.35rem;
+        }
+
+        .evidence-links-grid {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .submit-actions {
+            display: grid;
+            gap: 0.75rem;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+        }
+
+        .auth-link {
+            color: inherit;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+                <span class="beta-badge">BETA</span>
+            </a>
+            <div class="navbar-search-wrapper">
+                <div class="navbar-search">
+                    <i class="fas fa-search navbar-search-icon"></i>
+                    <input type="text"
+                           class="navbar-search-input"
+                           id="searchInput"
+                           placeholder="Search player..."
+                           autocomplete="off">
+                </div>
+            </div>
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a href="index.html">Leaderboards</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="account.html">Account</a></li>
+                <li><a href="support.html?category=player_report" class="active">Report</a></li>
+                <li><a href="#" id="navLogout" onclick="handleLogout()">Logout</a></li>
+            </ul>
+            <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="container report-content">
+        <div class="page-header">
+            <h1 class="page-title"><i class="fas fa-flag"></i> Report a Player</h1>
+            <p class="page-subtitle">Report behavior that violates the rules so staff can review it quickly.</p>
+        </div>
+
+        <div id="authCheck" class="d-none">
+            <div class="card">
+                <div class="alert alert-error">
+                    <strong>Authentication Required</strong><br>
+                    You must be logged in to report a player. Please <a class="auth-link" href="login.html">log in</a> first.
+                </div>
+            </div>
+        </div>
+
+        <div id="accountRestricted" class="d-none">
+            <div class="card">
+                <div class="alert alert-warning">
+                    <strong>Reporting Disabled</strong><br>
+                    Your account is blacklisted, so submitting reports is disabled.
+                </div>
+            </div>
+        </div>
+
+        <div id="reportForm" class="d-none">
+            <form id="playerReportForm" onsubmit="handleSubmitReport(event)">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-user-circle"></i> Reported Player</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label" for="reportedPlayerId">Player Username or UID *</label>
+                                    <input type="text" class="form-input" id="reportedPlayerId" placeholder="Enter Minecraft username or player UID" required>
+                                    <div class="form-help-text">You can find the UID on their profile page.</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label" for="reportedUUID">Minecraft UUID (optional)</label>
+                                    <input type="text" class="form-input" id="reportedUUID" placeholder="e.g. 550e8400-e29b-41d4-a716-446655440000">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-exclamation-circle"></i> Report Category *</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="report-templates" id="reportTemplates"></div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-list"></i> Additional Details</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label class="form-label" for="matchId">Match ID (if related to a specific match)</label>
+                            <input type="text" class="form-input" id="matchId" placeholder="Optional - helps us identify the incident">
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="reportDescription">Description *</label>
+                            <textarea class="form-textarea" id="reportDescription" placeholder="Describe what happened, when it happened, and any relevant details..." required></textarea>
+                            <div class="form-help-text">Be specific and factual. Include date/time if possible.</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="evidenceLink1">Evidence Links (optional)</label>
+                            <div class="evidence-links-grid">
+                                <input type="url" class="form-input" id="evidenceLink1" placeholder="https://example.com/proof-1">
+                                <input type="url" class="form-input" id="evidenceLink2" placeholder="https://example.com/proof-2">
+                                <input type="url" class="form-input" id="evidenceLink3" placeholder="https://example.com/proof-3">
+                            </div>
+                            <div class="form-help-text">Uploads are disabled. Add direct links to screenshots/videos (YouTube, Imgur, Streamable, etc.).</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <strong>Note:</strong> You'll receive an inbox notification if action is taken on your report. False reports may result in reporting restrictions.
+                        </div>
+
+                        <div class="form-group">
+                            <label class="checkbox-row">
+                                <input type="checkbox" id="reportAgreement" required>
+                                <span>I confirm this report is accurate and truthful.</span>
+                            </label>
+                        </div>
+
+                        <div class="submit-actions">
+                            <button type="submit" class="btn btn-primary" id="submitReportBtn">
+                                <i class="fas fa-paper-plane"></i> Submit Report
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="window.location.href='dashboard.html'">
+                                <i class="fas fa-times"></i> Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="footer-logo">
+                <span>MC Leaderboards</span>
+            </div>
+            <div class="footer-links">
+                <a href="rules.html">Rules</a>
+                <a href="privacy-policy.html">Privacy Policy</a>
+                <a href="terms-of-service.html">Terms of Service</a>
+                <a href="support.html">Support</a>
+                <a href="blacklisted.html">Blacklisted</a>
+            </div>
+            <p class="footer-copyright">MC Leaderboards &copy; 2025. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/config.js" defer></script>
+    <script src="js/dev-mode-toggle.js" defer></script>
+    <script src="js/utils.js" defer></script>
+    <script src="js/firebase-service.js" defer></script>
+    <script src="js/app-state.js" defer></script>
+    <script src="js/api-service.js" defer></script>
+    <script src="js/player-search.js" defer></script>
+    <script src="js/firebase-auth-service.js" defer></script>
+    <script src="js/auth-guard.js" defer></script>
+    <script src="js/navigation.js" defer></script>
+    <script src="js/ui-enhancements.js" defer></script>
+
+    <script>
+        const REPORT_TEMPLATES = [
+            { id: 'alt_account', title: 'Alt Account / Multi-Accounting', description: 'Suspected alternate or duplicate account.' },
+            { id: 'chat_abuse', title: 'Chat Abuse / Harassment', description: 'Offensive language, threats, or harassment.' },
+            { id: 'unfair_play', title: 'Unfair Play / Cheating', description: 'Suspected hacking, bots, or exploits.' },
+            { id: 'match_throwing', title: 'Match Throwing / Int', description: 'Intentionally losing or throwing matches.' },
+            { id: 'impersonation', title: 'Impersonation', description: 'Pretending to be someone else.' },
+            { id: 'other', title: 'Other Violation', description: 'Something else not listed above.' }
+        ];
+
+        let selectedTemplate = null;
+        function setVisible(id, visible) {
+            const element = document.getElementById(id);
+            if (!element) return;
+            element.classList.toggle('d-none', !visible);
+        }
+
+        function formatReportStatus(status) {
+            if (!status) return 'Pending';
+            if (status === 'resolved') return 'Resolved';
+            if (status === 'dismissed') return 'Dismissed';
+            return status.charAt(0).toUpperCase() + status.slice(1);
+        }
+
+        function formatTimeAgoShort(dateStr) {
+            if (!dateStr) return '';
+            const now = new Date();
+            const date = new Date(dateStr);
+            const seconds = Math.floor((now - date) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            const days = Math.floor(hours / 24);
+            if (days < 7) return `${days}d ago`;
+            return date.toLocaleDateString();
+        }
+
+        async function loadMyRecentReports() {
+            const list = document.getElementById('myRecentReportsList');
+            if (!list) return;
+            try {
+                const response = await apiService.getMyPlayerReports(5);
+                const reports = response?.reports || [];
+                if (reports.length === 0) {
+                    list.innerHTML = '<p class="text-muted">No reports submitted yet.</p>';
+                    return;
+                }
+                list.innerHTML = reports.map(report => `
+                    <div style="padding: 0.65rem 0; border-bottom: 1px solid var(--border-color);">
+                        <div style="display:flex; justify-content:space-between; gap:0.5rem; align-items:center;">
+                            <strong>${report.reportedPlayer || 'Unknown'}</strong>
+                            <span class="report-status-badge ${(report.status || 'pending').toLowerCase()}">
+                                <i class="fas ${report.status === 'resolved' ? 'fa-circle-check' : report.status === 'dismissed' ? 'fa-circle-xmark' : 'fa-clock'}"></i>
+                                ${formatReportStatus(report.status)}
+                            </span>
+                        </div>
+                        <div style="font-size:0.85rem; color:var(--text-muted); margin-top:0.2rem;">
+                            ${report.category || 'other'} • ${formatTimeAgoShort(report.createdAt)}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading recent reports:', error);
+                list.innerHTML = '<p class="text-danger">Failed to load report history.</p>';
+            }
+        }
+
+        async function initReportPage() {
+            try {
+                const allowed = await requireAuth(false, false);
+                if (!allowed) return;
+
+                setVisible('authCheck', false);
+                setVisible('accountRestricted', false);
+
+                const profile = await apiService.getProfile();
+                if (profile?.blacklisted === true) {
+                    setVisible('reportForm', false);
+                    setVisible('accountRestricted', true);
+                    return;
+                }
+
+                setVisible('reportForm', true);
+
+                const templatesContainer = document.getElementById('reportTemplates');
+                templatesContainer.innerHTML = REPORT_TEMPLATES.map(template => `
+                    <div class="template-option" onclick="selectTemplate('${template.id}', this)">
+                        <div class="template-option-title">${template.title}</div>
+                        <div class="template-option-desc">${template.description}</div>
+                    </div>
+                `).join('');
+
+                const params = new URLSearchParams(window.location.search);
+                if (params.has('player')) {
+                    document.getElementById('reportedPlayerId').value = params.get('player');
+                }
+
+                await loadMyRecentReports();
+            } catch (error) {
+                console.error('Error initializing report page:', error);
+                setVisible('authCheck', true);
+                setVisible('accountRestricted', false);
+                setVisible('reportForm', false);
+            }
+        }
+
+        function selectTemplate(templateId, element) {
+            selectedTemplate = templateId;
+            document.querySelectorAll('.template-option').forEach(el => el.classList.remove('selected'));
+            if (element) element.classList.add('selected');
+        }
+
+        async function handleSubmitReport(e) {
+            e.preventDefault();
+
+            if (!selectedTemplate) {
+                Swal.fire('Missing Category', 'Please select a report category.', 'warning');
+                return;
+            }
+
+            const evidenceLinks = ['evidenceLink1', 'evidenceLink2', 'evidenceLink3']
+                .map(id => (document.getElementById(id)?.value || '').trim())
+                .filter(link => link.length > 0);
+
+            const reportData = {
+                reportedPlayer: document.getElementById('reportedPlayerId').value.trim(),
+                reportedUUID: document.getElementById('reportedUUID').value.trim(),
+                category: selectedTemplate,
+                matchId: document.getElementById('matchId').value.trim(),
+                description: document.getElementById('reportDescription').value.trim(),
+                evidenceLinks,
+                hasEvidence: evidenceLinks.length > 0,
+                reportedAt: new Date().toISOString()
+            };
+
+            const submitBtn = document.getElementById('submitReportBtn');
+            const originalLabel = submitBtn.innerHTML;
+
+            try {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner spinner-sm"></span> Submitting...';
+
+                const resp = await apiService.submitPlayerReport(reportData);
+                if (!resp?.success) throw new Error(resp?.message || 'Failed to submit report');
+
+                if (typeof Toast !== 'undefined') Toast.success('Report submitted successfully');
+
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Report Submitted',
+                    text: 'Thank you. Our staff team will review this report shortly.',
+                    confirmButtonText: 'Back to Dashboard'
+                });
+
+                window.location.href = 'dashboard.html';
+            } catch (error) {
+                console.error('Error submitting report:', error);
+                if (error?.data?.code === 'REPORT_LIMIT_REACHED') {
+                    const resetAt = error?.data?.resetAt ? new Date(error.data.resetAt).toLocaleString() : 'later';
+                    Swal.fire('Limit Reached', `You reached the report limit. You can submit again after ${resetAt}.`, 'warning');
+                    await loadMyRecentReports();
+                } else {
+                    Swal.fire('Error', error.message || 'Failed to submit report. Please try again.', 'error');
+                }
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalLabel;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initReportPage);
+    </script>
+</body>
+</html>

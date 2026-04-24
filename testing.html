@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match Testing - MC Leaderboards</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/loading-overlay.js"></script>
+    
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+    <style>
+        .match-shell { max-width: 920px; margin: 1.25rem auto 2rem auto; }
+        .match-card { border: 1px solid var(--border-color); border-radius: 12px; background: var(--secondary-bg); }
+        .match-card .card-header { background: transparent; border-bottom: 1px solid var(--border-color); padding: 0.9rem 1rem; }
+        .match-card .card-body { padding: 1rem; }
+        .match-title { margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 0.45rem; }
+        .match-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; }
+        .match-item { padding: 0.7rem; border: 1px solid var(--border-color); border-radius: 10px; background: var(--tertiary-bg); }
+        .match-item .k { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+        .match-item .v { font-size: 0.95rem; font-weight: 600; margin-top: 0.2rem; }
+        .status-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.65rem; margin: 0.9rem 0; }
+        .status-chip { padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 10px; background: var(--tertiary-bg); text-align: center; }
+        .minimal-note { border: 1px solid var(--border-color); border-radius: 10px; padding: 0.75rem; background: var(--tertiary-bg); margin-bottom: 0.6rem; }
+        .finalize-modal-shell { display: grid; gap: 1rem; }
+        .finalize-modal-intro { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr); gap: 0.85rem; }
+        .finalize-modal-panel {
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            background: var(--tertiary-bg);
+            padding: 1rem;
+        }
+        .finalize-modal-kicker {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.35rem 0.65rem;
+            border-radius: 999px;
+            background: rgba(92, 210, 169, 0.12);
+            color: var(--accent-color);
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            margin-bottom: 0.75rem;
+        }
+        .finalize-modal-title {
+            margin: 0 0 0.35rem 0;
+            font-size: 1.2rem;
+            line-height: 1.3;
+        }
+        .finalize-modal-copy {
+            margin: 0;
+            color: var(--text-muted);
+            line-height: 1.55;
+        }
+        .finalize-meta-list { display: grid; gap: 0.65rem; }
+        .finalize-meta-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: center;
+            padding-bottom: 0.55rem;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .finalize-meta-row:last-child { border-bottom: 0; padding-bottom: 0; }
+        .finalize-meta-label { color: var(--text-muted); font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+        .finalize-meta-value { font-weight: 700; text-align: right; }
+        .finalize-scoreboard {
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            background: var(--tertiary-bg);
+            padding: 1rem;
+        }
+        .finalize-scoreboard-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            align-items: center;
+            margin-bottom: 0.9rem;
+        }
+        .finalize-scoreboard-title { margin: 0; font-size: 1rem; }
+        .finalize-scoreboard-subtitle { margin: 0.2rem 0 0 0; color: var(--text-muted); font-size: 0.9rem; }
+        .finalize-target-chip {
+            padding: 0.45rem 0.75rem;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            font-size: 0.82rem;
+            font-weight: 700;
+            white-space: nowrap;
+        }
+        .finalize-score-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+            gap: 0.85rem;
+            align-items: end;
+        }
+        .finalize-score-card {
+            padding: 0.9rem;
+            border-radius: 14px;
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+        }
+        .finalize-score-label {
+            display: block;
+            margin-bottom: 0.65rem;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .finalize-score-name {
+            display: block;
+            margin-bottom: 0.7rem;
+            font-weight: 700;
+            font-size: 1rem;
+            line-height: 1.35;
+        }
+        .finalize-score-input {
+            width: 100%;
+            min-height: 74px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.03);
+            color: var(--text-color);
+            font-size: 2rem;
+            font-weight: 800;
+            text-align: center;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .finalize-score-input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(92, 210, 169, 0.12);
+            transform: translateY(-1px);
+        }
+        .finalize-score-divider {
+            align-self: center;
+            justify-self: center;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: var(--text-muted);
+            font-weight: 800;
+            font-size: 1.1rem;
+        }
+        .finalize-helper-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.55rem;
+            margin-top: 0.85rem;
+        }
+        .finalize-helper-chip {
+            padding: 0.45rem 0.75rem;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+        .finalize-validation {
+            min-height: 1.25rem;
+            color: #ef4444;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        @media (max-width: 760px) {
+            .match-grid, .status-row { grid-template-columns: 1fr; }
+            .finalize-modal-intro, .finalize-score-grid { grid-template-columns: 1fr; }
+            .finalize-score-divider { width: 100%; border-radius: 12px; height: 36px; }
+            .finalize-scoreboard-header, .finalize-meta-row { align-items: flex-start; flex-direction: column; }
+            .finalize-meta-value { text-align: left; }
+        }
+    </style>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+                <span class="beta-badge">BETA</span>
+            </a>
+            <div class="navbar-search-wrapper">
+                <div class="navbar-search">
+                    <i class="fas fa-search navbar-search-icon"></i>
+                    <input type="text"
+                           class="navbar-search-input"
+                           id="searchInput"
+                           placeholder="Search player..."
+                           autocomplete="off">
+                </div>
+            </div>
+            <ul class="navbar-nav">
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="#" id="navLogout" onclick="handleLogout()">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container match-shell">
+        <!-- Loading State -->
+        <div id="loadingState" class="card">
+            <div class="card-body text-center">
+                <div class="spinner"></div>
+                <p class="mt-3">Loading match...</p>
+            </div>
+        </div>
+
+        <!-- Waiting for Other Player -->
+        <div id="waitingState" class="card match-card d-none">
+            <div class="card-header">
+                <h2 class="match-title"><i class="fas fa-clock"></i> Waiting For Players</h2>
+            </div>
+            <div class="card-body text-center">
+                <div class="minimal-note">
+                    <div style="font-size: 3rem; font-weight: 700; color: var(--warning-color); margin-bottom: 0.35rem;" id="countdownDisplay">3:00</div>
+                    <div class="text-muted" style="margin-bottom: 0.65rem;">Time remaining to join</div>
+                    <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                        <div id="countdownProgress" style="width: 100%; height: 100%; background: var(--warning-color); transition: width 1s linear;"></div>
+                    </div>
+                </div>
+
+                <div class="status-row">
+                    <div class="status-chip">
+                        <div style="font-size: 1.7rem; margin-bottom: 0.35rem;" id="playerJoinIcon">
+                            <i class="fas fa-user" style="color: var(--text-muted);"></i>
+                        </div>
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;" id="playerJoinName">Player</div>
+                        <div style="font-size: 0.9rem; color: var(--text-muted);" id="playerJoinStatus">Waiting...</div>
+                    </div>
+                    <div class="status-chip">
+                        <div style="font-size: 1.7rem; margin-bottom: 0.35rem;" id="testerJoinIcon">
+                            <i class="fas fa-user-shield" style="color: var(--text-muted);"></i>
+                        </div>
+                        <div style="font-weight: 600; margin-bottom: 0.25rem;" id="testerJoinName">Tier Tester</div>
+                        <div style="font-size: 0.9rem; color: var(--text-muted);" id="testerJoinStatus">Waiting...</div>
+                    </div>
+                </div>
+
+                <div class="alert alert-warning" style="border-radius: 10px; margin-bottom: 0.9rem;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Auto-finalize rules:</strong> both players must join in 3 minutes.
+                    <ul style="text-align: left; margin: 0.5rem 0 0 2rem; padding: 0;">
+                        <li>If only the player joins: Player wins <span id="playerForfeitScore">3-0</span></li>
+                        <li>If only the tester joins: Tester wins <span id="testerForfeitScore">3-0</span></li>
+                        <li>If neither joins: Match is cancelled</li>
+                    </ul>
+                </div>
+
+                <div class="alert alert-info" style="border-radius: 10px; margin-bottom: 0.9rem;" id="waitingRoleAssignmentNotice">
+                    <i class="fas fa-balance-scale"></i>
+                    Waiting for role assignment details...
+                </div>
+                <div class="alert alert-warning d-none" style="border-radius: 10px; margin-bottom: 0.9rem;" id="waitingRoleAssignmentDebugNotice"></div>
+
+                <div>
+                    <button class="btn btn-danger" onclick="handleAbortMatch()" id="abortMatchBtn" style="padding: 0.75rem 2rem;">
+                        <i class="fas fa-times"></i> Abort Match
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Match Content -->
+        <div id="matchContent" class="d-none">
+            <div id="spectatorNotice" class="alert alert-info d-none" style="border-radius: 10px; margin-bottom: 0.9rem;">
+                <i class="fas fa-eye"></i>
+                Spectator mode: you can view match details, but chat and match actions are disabled.
+            </div>
+            <!-- Match Information -->
+            <div class="card mb-3 match-card">
+                <div class="card-header">
+                    <h2 class="match-title"><i class="fas fa-swords"></i> Match</h2>
+                </div>
+                <div class="card-body">
+                    <div class="match-grid">
+                        <div class="match-item"><div class="k">Gamemode</div><div class="v" id="matchGamemode"></div></div>
+                        <div class="match-item"><div class="k">Opponent</div><div class="v" id="matchOpponent"></div></div>
+                        <div class="match-item"><div class="k">Your Role</div><div class="v" id="matchYourRole"></div></div>
+                        <div class="match-item"><div class="k">Region</div><div class="v" id="matchRegion"></div></div>
+                        <div class="match-item"><div class="k">Server IP</div><div class="v" id="matchServerIP"></div></div>
+                        <div class="match-item" id="matchTotemDrainItem"><div class="k">Totem Drain</div><div class="v" id="matchTotemDrain"></div></div>
+                    </div>
+                    <div class="alert alert-info mb-0" style="border-radius: 10px; margin-top: 1rem;" id="roleAssignmentNotice">
+                        <i class="fas fa-balance-scale"></i>
+                        Waiting for role assignment details...
+                    </div>
+                    <div class="alert alert-warning d-none mb-0" style="border-radius: 10px; margin-top: 0.75rem;" id="roleAssignmentDebugNotice"></div>
+                </div>
+            </div>
+
+            <div class="card mb-3 match-card">
+                <div class="card-header">
+                    <h2 class="match-title"><i class="fas fa-gavel"></i> Testing System Info</h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-2" style="border-radius: 10px;">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Match Format:</strong> First to <span id="displayFirstTo">3</span> in <span id="displayGamemode">Vanilla</span><span id="matchFormatTotemDrain"> | <strong>Totem Drain:</strong> <span id="displayTotemDrain">14</span></span>
+                    </div>
+                    <div class="minimal-note">
+                        <strong>Current flow:</strong>
+                        <ul style="margin: 0.45rem 0 0 1.1rem;">
+                            <li>Both sides must join in 3 minutes, or the system auto-finalizes.</li>
+                            <li>If both join, tester gets 5 minutes to mark the match as started.</li>
+                            <li>If not marked started in time, match auto-finalizes as no winner.</li>
+                            <li>Tester submits final score once complete. Elo updates are automatic.</li>
+                            <li>Use chat only for match coordination and status updates.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Match Started Section -->
+            <div class="card mb-3 match-card" id="matchStartedSection" style="display: none;">
+                <div class="card-header">
+                    <h2 class="match-title"><i class="fas fa-hourglass-half"></i> Start Match Countdown</h2>
+                </div>
+                <div class="card-body text-center">
+                    <p id="matchStartedLead" style="font-size: 1rem; color: var(--text-secondary); margin-bottom: 1rem; line-height: 1.6;">
+                        Both sides have joined. The tier tester now has <strong>5 minutes</strong> to mark the match as started.
+                    </p>
+                    
+                    <!-- Countdown Timer -->
+                    <div style="background: rgba(245, 158, 11, 0.08); border: 1px solid rgba(245, 158, 11, 0.28); border-radius: 16px; padding: 2rem; margin-bottom: 2rem;">
+                        <div style="font-size: 3.5rem; font-weight: bold; color: var(--warning-color); font-family: 'Courier New', monospace; margin-bottom: 0.5rem;" id="matchStartedCountdown">5:00</div>
+                        <div style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 1rem;">Time remaining to start match</div>
+                        <div style="width: 100%; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                            <div id="matchStartedProgress" style="width: 100%; height: 100%; background: var(--warning-color); transition: width 1s linear;"></div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-warning" style="border-radius: 10px; margin-bottom: 1rem; color: var(--text-primary); background: rgba(245, 158, 11, 0.14); border-color: rgba(245, 158, 11, 0.35);">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Important:</strong> If the match is not marked as started within 5 minutes, it will be auto-finalized with <strong>no winner</strong> (draw result).
+                    </div>
+
+                    <div id="matchStartRoleNotice" class="minimal-note" style="margin-bottom: 1rem; color: var(--text-secondary);">
+                        Waiting for the tier tester to confirm the match start. This updates automatically.
+                    </div>
+
+                    <!-- Start Match Button -->
+                    <button class="btn btn-success btn-lg" style="padding: 0.75rem 2rem; font-size: 1.1rem;" onclick="handleMarkMatchStarted()" id="markStartedBtn">
+                        <i class="fas fa-play"></i> Mark Match as Started
+                    </button>
+                </div>
+            </div>
+
+            <!-- Match Already Started Section -->
+            <div class="card mb-3 match-card" id="matchAlreadyStartedSection" style="display: none;">
+                <div class="card-header">
+                    <h2 class="match-title"><i class="fas fa-play"></i> Match In Progress</h2>
+                </div>
+                <div class="card-body text-center">
+                    <p style="font-size: 1.1rem; color: var(--text-muted);">
+                        <i class="fas fa-check-circle" style="color: var(--success-color);"></i> Match has been marked as started. Begin playing!
+                    </p>
+                </div>
+            </div>
+
+            <!-- Chat -->
+            <div class="card mb-3 match-card">
+                <div class="card-header">
+                    <h2 class="match-title"><i class="fas fa-comments"></i> Chat</h2>
+                </div>
+                <div class="card-body">
+                    <div id="chatMessages" style="height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; background-color: var(--tertiary-bg);">
+                        <!-- Messages will be inserted here -->
+                    </div>
+                    <form id="chatForm" onsubmit="handleSendMessage(event)">
+                        <div class="row">
+                            <div class="col-10">
+                                <input type="text" 
+                                       class="form-input" 
+                                       id="messageInput" 
+                                       placeholder="Type a message..." 
+                                       required>
+                            </div>
+                            <div class="col-2">
+                                <button type="submit" class="btn btn-primary" style="width: 100%;" id="sendBtn">
+                                    <i class="fas fa-paper-plane"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="spectatorChatNotice" class="text-muted d-none" style="font-size: 0.9rem;">
+                        Chat is only available to the two participants in this match.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card match-card">
+                <div class="card-header">
+                    <h2 class="match-title"><i class="fas fa-cog"></i> Actions</h2>
+                </div>
+                <div class="card-body">
+                    <div class="minimal-note" style="margin-bottom: 1rem; color: var(--text-secondary);">
+                        <div style="font-weight: 700; margin-bottom: 0.4rem; color: var(--text-primary);">Need admin help?</div>
+                        <div style="font-size: 0.95rem; line-height: 1.6; margin-bottom: 0.85rem;">Use Report Player for misconduct or no-shows, or open a Support ticket for anything broader about the match, score, or server conditions.</div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem;">
+                            <a class="btn btn-secondary" href="#" onclick="openSupportReportForMatch(); return false;" style="width: 100%;">
+                                <i class="fas fa-flag"></i> Report Player
+                            </a>
+                            <a class="btn btn-secondary" href="support.html" style="width: 100%;">
+                                <i class="fas fa-life-ring"></i> Open Support
+                            </a>
+                        </div>
+                    </div>
+                    <div id="drawVotePanel" class="minimal-note d-none" style="margin-bottom: 1rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.4rem;">
+                            End Match Without Scoring
+                        </div>
+                        <div class="text-muted" style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                            This ends the match as a draw only when both participants agree.
+                        </div>
+                        <div id="drawVoteStatus" class="text-muted" style="font-size: 0.9rem; margin-bottom: 0.65rem;"></div>
+                        <button class="btn btn-secondary" style="width: 100%;" onclick="handleDrawVote()" id="drawVoteBtn">
+                            <i class="fas fa-handshake"></i> Agree to End Match Without Scoring
+                        </button>
+                    </div>
+                    <div id="testerActions" style="display: none;">
+                        <button class="btn btn-success btn-lg" style="width: 100%; margin-bottom: 1rem;" onclick="handleFinalizeMatch()">
+                            <i class="fas fa-check"></i> Finalize Match
+                        </button>
+                    </div>
+                    <button class="btn btn-danger" style="width: 100%;" onclick="handleAbortMatch()">
+                        <i class="fas fa-times"></i> Abort Match
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="footer-logo">
+                <span>MC Leaderboards</span>
+            </div>
+            <div class="footer-links">
+                <a href="/privacy-policy.html">Privacy Policy</a>
+                <a href="/terms-of-service.html">Terms of Service</a>
+                <a href="support.html">Support</a>
+                <a href="blacklisted.html">Blacklisted</a>
+            </div>
+            <p class="footer-copyright">MC Leaderboards &copy; 2025. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/dev-mode-toggle.js"></script>
+    <script src="js/firebase-service.js"></script>
+    <script src="js/app-state.js"></script>
+    <script src="js/api-service.js"></script>
+    <script src="js/player-search.js"></script>
+    <script src="js/realtime-service.js"></script>
+    <script src="js/firebase-auth-service.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/testing.js"></script>
+    <script>
+        // Verify authentication BEFORE anything else
+        // Wait for deferred scripts to load
+        window.addEventListener('DOMContentLoaded', async function() {
+            // Wait for Firebase to initialize first
+            const waitForFirebase = () => {
+                return new Promise((resolve) => {
+                    if (typeof waitForFirebaseInit === 'function') {
+                        waitForFirebaseInit().then(resolve);
+                    } else {
+                        const checkInterval = setInterval(() => {
+                            if (typeof waitForFirebaseInit === 'function') {
+                                clearInterval(checkInterval);
+                                waitForFirebaseInit().then(resolve);
+                            }
+                        }, 50);
+                    }
+                });
+            };
+
+            // Wait for requireAuth to be available
+            const waitForAuth = () => {
+                return new Promise((resolve) => {
+                    if (typeof requireAuth === 'function') {
+                        resolve();
+                    } else {
+                        const checkInterval = setInterval(() => {
+                            if (typeof requireAuth === 'function') {
+                                clearInterval(checkInterval);
+                                resolve();
+                            }
+                        }, 50);
+                    }
+                });
+            };
+
+            // Wait for Firebase to initialize
+            await waitForFirebase();
+            
+            // Then wait for auth guard
+            await waitForAuth();
+            
+            // Now authenticate
+            const authenticated = await requireAuth();
+            if (!authenticated) return; // Redirected to login
+
+            // Initialize testing after authentication
+            if (typeof initTesting === 'function') {
+                initTesting();
+            }
+        });
+    </script>
+
+    <!-- Custom Modals -->
+    <div id="customModal" class="custom-modal-overlay" style="display: none;">
+        <div class="custom-modal">
+            <div class="custom-modal-header">
+                <h3 id="modalTitle">Modal Title</h3>
+                <button class="custom-modal-close" onclick="closeCustomModal()">&times;</button>
+            </div>
+            <div class="custom-modal-body" id="modalBody">
+                <!-- Modal content will be inserted here -->
+            </div>
+            <div class="custom-modal-footer" id="modalFooter">
+                <!-- Modal buttons will be inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Match Results Container -->
+    <div id="matchResultsContainer" style="display: none;">
+        <!-- Content will be populated by JavaScript -->
+    </div>
+
+</body>
+</html>

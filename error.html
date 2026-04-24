@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MC Leaderboards - Error</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+            </a>
+        </div>
+    </nav>
+
+    <main class="container" style="max-width: 700px; margin-top: 3rem; margin-bottom: 3rem;">
+        <div class="card">
+            <div class="card-body" style="text-align: center; padding: 2.5rem 2rem;">
+                <div style="font-size: 3rem; margin-bottom: 1rem; color: var(--error-color);">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <h1 class="page-title" style="margin-bottom: 0.5rem;">Something went wrong</h1>
+                <p class="text-muted" id="errorSummary" style="margin-bottom: 1.5rem;">
+                    We ran into a problem talking to the backend. No data was loaded.
+                </p>
+
+                <div id="errorDetails" style="text-align: left; margin: 0 auto 1.5rem auto; max-width: 600px; font-size: 0.9rem; background: var(--secondary-bg); border-radius: 10px; padding: 1rem; border: 1px solid var(--border-color);">
+                    <div style="font-weight: 600; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-info-circle" style="color: var(--accent-color);"></i>
+                        <span>Error details</span>
+                    </div>
+                    <div id="errorDetailsBody">
+                        <p style="margin: 0;">Loading…</p>
+                    </div>
+                </div>
+
+                <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center;">
+                    <a href="index.html" class="btn btn-primary">
+                        <i class="fas fa-home"></i> Go to Leaderboards
+                    </a>
+                    <button class="btn btn-secondary" type="button" onclick="window.location.reload()">
+                        <i class="fas fa-sync"></i> Try Again
+                    </button>
+                </div>
+
+                <p class="text-muted" style="margin-top: 1.5rem; font-size: 0.85rem;">
+                    If this keeps happening, please contact support with the information above.
+                </p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="footer-logo">
+                <span>MC Leaderboards</span>
+            </div>
+            <div class="footer-links">
+                <a href="rules.html">Rules</a>
+                <a href="/privacy-policy.html">Privacy Policy</a>
+                <a href="/terms-of-service.html">Terms of Service</a>
+                <a href="support.html">Support</a>
+                <a href="blacklisted.html">Blacklisted</a>
+            </div>
+            <p class="text-muted" style="font-size: 0.9rem;">MC Leaderboards &copy; 2025. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        (function () {
+            // Avoid any backend calls on the error page itself.
+            const params = new URLSearchParams(window.location.search);
+            const code = params.get('code') || 'UNKNOWN';
+            const status = params.get('status') || '';
+            const message = params.get('message') || 'An unexpected error occurred while loading this page.';
+            const endpoint = params.get('endpoint') || '';
+
+            const detailsBody = document.getElementById('errorDetailsBody');
+            const summary = document.getElementById('errorSummary');
+
+            const safe = (value) => {
+                const div = document.createElement('div');
+                div.textContent = value || '';
+                return div.innerHTML;
+            };
+
+            const lines = [];
+            lines.push(`<p><strong>Status:</strong> ${safe(status || 'N/A')}</p>`);
+            lines.push(`<p><strong>Code:</strong> ${safe(code)}</p>`);
+            if (endpoint) {
+                lines.push(`<p><strong>Endpoint:</strong> <code>${safe(endpoint)}</code></p>`);
+            }
+            lines.push(`<p><strong>Message:</strong> ${safe(message)}</p>`);
+            lines.push(`<p><strong>Time:</strong> ${safe(new Date().toLocaleString())}</p>`);
+
+            detailsBody.innerHTML = lines.join('');
+
+            if (status) {
+                summary.textContent = `We couldn't load this page because the server returned status ${status}.`;
+            } else {
+                summary.textContent = 'We could not reach the backend or the response was invalid. No data was loaded.';
+            }
+        })();
+    </script>
+</body>
+</html>
+

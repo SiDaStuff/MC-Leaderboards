@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" fill="none">
+  <defs>
+    <linearGradient id="textGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FFD700;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFA500;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <text x="10" y="40" font-family="Arial, sans-serif" font-size="32" font-weight="bold" fill="url(#textGradient)">MC LEADERBOARDS</text>
+  <text x="10" y="55" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#FFD700">PLUS</text>
+  <circle cx="185" cy="30" r="12" fill="url(#textGradient)"/>
+  <path d="M185 24v12M179 30h12" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+</svg>
+

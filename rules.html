@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rules - MC Leaderboards</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="assets/fonts/local-fonts.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/loading-overlay.js"></script>
+
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+                <span class="beta-badge">BETA</span>
+            </a>
+            <div class="navbar-search-wrapper">
+                <div class="navbar-search">
+                    <i class="fas fa-search navbar-search-icon"></i>
+                    <input type="text"
+                           class="navbar-search-input"
+                           id="searchInput"
+                           placeholder="Search player..."
+                           autocomplete="off">
+                </div>
+            </div>
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a href="index.html">Leaderboards</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="account.html">Account</a></li>
+                <li><a href="#" id="navLogout" onclick="handleLogout()">Logout</a></li>
+            </ul>
+            <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="container" style="margin-top: 2rem; margin-bottom: 2rem;">
+        <div class="page-header">
+            <h1 class="page-title">Rules & Guidelines</h1>
+            <p class="page-subtitle">Overall rules and gamemode-specific rules</p>
+        </div>
+
+        <div class="card">
+            <div class="card-header" style="background: linear-gradient(135deg, var(--secondary-bg), var(--tertiary-bg));">
+                <h2 class="card-title" id="rulesTitle" style="margin: 0;">
+                    <i class="fas fa-book" style="color: var(--accent-color);"></i>
+                    Rules
+                </h2>
+            </div>
+            <div class="card-body">
+                <div id="rulesContent" style="line-height: 1.6;"></div>
+                <pre id="rulesSource" style="display: none;">###overall
+# MC Leaderboards Rules
+
+## General Conduct
+- Be respectful to players and testers.
+- No harassment, spam, or disruptive behavior.
+- Follow tester instructions during active tests.
+
+## Cheating and Restrictions
+- Cheating, helping cheaters, or hiding cheating evidence can result in restrictions or permanent bans.
+- Repeat misconduct after punishment may result in permanent removal.
+
+### What counts as cheating?
+- Account sharing in ranked fights.
+- Rigged/faked fights or scores.
+- Unfair advantages through disallowed mods, plugins, or commands.
+- Any deliberate attempt to manipulate testing outcomes.
+
+## Mod and Client Rules
+### Allowed (examples)
+- Cosmetic mods (capes, crosshairs, overlays).
+- Performance mods that do not change gameplay.
+- Personal HUD mods (armor HUD, potion HUD, saturation HUD).
+
+### Disallowed
+- Movement/reach/combat automation mods (macros, autoclickers, auto totem, etc).
+- Mods that create major non-vanilla behavior differences.
+- ESP/radar/free-look/minimap-style opponent tracking.
+- Mods that reveal hidden opponent info (health, durability, saturation, etc).
+- Modifications that intentionally cause abnormal latency or packet abuse.
+
+## Queue and Matchmaking
+- You may queue even if no tester is currently online.
+- Matchmaking is based on gamemode + region compatibility.
+- If a tester becomes available for your gamemode and region, queued players are matched automatically.
+- If no tester is available for 5+ minutes, queue auto-removal may occur.
+
+## Universal Match Rules
+- No stalling (excessive running/camping/avoidance).
+- Do not leave tests mid-session without valid reason.
+- Do not attack obviously frozen/disconnected opponents unfairly.
+- Do not spam players during tests.
+- Use common sense and fair-play standards.
+
+## First-To Targets
+- Sword: FT6
+- Axe: FT10
+- Pot: FT5
+- NethOP: FT3
+- SMP: FT2
+- UHC: FT4
+- Vanilla: FT3
+- Mace: FT3
+
+###vanilla
+# Vanilla Rules
+- Follow all Overall rules.
+- Testing kit: bring your own.
+- No beacons.
+- No enchanted golden apples.
+- No milk for stalling/abuse.
+- 64 respawn anchors max.
+- 24 rockets max.
+- Totem drain format: if both players are above 1700 Vanilla rating, play 8 totem drain.
+- Otherwise, play 14 totem drain.
+- Match format: FT3.
+
+###uhc
+# UHC Rules
+- Follow all Overall rules.
+- Testing kit:
+![UHC Testing Kit](https://i.imgur.com/UTHXIkJ.png)
+- No unfair pre-fight advantage setup.
+- No stalling for resources mid-test.
+- Match format: FT4.
+
+###pot
+# Pot Rules
+- Follow all Overall rules.
+- Testing kit:
+![Pot Testing Kit](https://i.imgur.com/wO2dTF4.png)
+- Players must be ready before round damage starts.
+- No excessive running/stalling.
+- Match format: FT5.
+
+###nethop
+# NethOP Rules
+- Follow all Overall rules.
+- Testing kit:
+![NethOP Testing Kit](https://i.imgur.com/fMb2sIu.png)
+- No deliberate terrain abuse to avoid fighting.
+- No stalling/exploit rotations.
+- Match format: FT3.
+
+###smp
+# SMP Rules
+- Follow all Overall rules.
+- Testing kit:
+![SMP Testing Kit](https://i.imgur.com/PDDWIey.png)
+- No mid-test crafting/enchanting/farming loops for stall.
+- Keep tests moving and fair.
+- Match format: FT2.
+
+###sword
+# Sword Rules
+- Follow all Overall rules.
+- Testing kit:
+![Sword Testing Kit](https://i.imgur.com/zYvJkeb.png)
+- No macro/automation assistance.
+- No unfair hit-reg abuse methods.
+- Match format: FT6.
+
+###axe
+# Axe Rules
+- Follow all Overall rules.
+- Testing kit:
+![Axe Testing Kit](https://i.imgur.com/lBJ4uW1.png)
+- No macro/automation assistance.
+- No exploit-based reset loops to stall rounds.
+- Match format: FT10.
+
+###mace
+# Mace Rules
+- Follow all Overall rules.
+- Testing kit:
+![Mace Testing Kit](https://github.com/HelixCraft/Minecraft-PVP-Kits/raw/main/images/Mace.png)
+- Elytra durability must be vanilla durability.
+- No intentional abuse of map mechanics for indefinite stalling.
+- Respect ready checks before damage starts.
+- Match format: FT3.</pre>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="footer-logo">
+                <span>MC Leaderboards</span>
+            </div>
+            <div class="footer-links">
+                <a href="rules.html">Rules</a>
+                <a href="/privacy-policy.html">Privacy Policy</a>
+                <a href="/terms-of-service.html">Terms of Service</a>
+                <a href="support.html">Support</a>
+                <a href="blacklisted.html">Blacklisted</a>
+            </div>
+            <p class="footer-copyright">MC Leaderboards &copy; 2025. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/config.js"></script>
+    <script src="js/dev-mode-toggle.js"></script>
+    <script src="js/firebase-service.js"></script>
+    <script src="js/app-state.js"></script>
+    <script src="js/api-service.js"></script>
+    <script src="js/player-search.js"></script>
+    <script src="js/firebase-auth-service.js"></script>
+    <script src="js/navigation.js"></script>
+    <script>
+        (function formatRules() {
+            const sourceEl = document.getElementById('rulesSource');
+            const contentEl = document.getElementById('rulesContent');
+            if (!sourceEl || !contentEl) return;
+
+            const escapeHtml = (value) => {
+                const div = document.createElement('div');
+                div.textContent = value;
+                return div.innerHTML;
+            };
+            const renderInline = (value) => {
+                const escaped = escapeHtml(value);
+                return escaped
+                    .replace(/!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g, (_, alt, url) =>
+                        `<figure style="margin:0.45rem 0 0.75rem 0;max-width:420px;">
+                            <img src="${url}" alt="${escapeHtml(alt)}" loading="lazy" style="display:block;width:100%;max-width:420px;aspect-ratio:16/10;object-fit:contain;background:var(--secondary-bg);border:1px solid var(--border-color);border-radius:8px;padding:8px;">
+                            <figcaption style="margin-top:0.35rem;font-size:0.85rem;color:var(--text-secondary);font-weight:600;">${escapeHtml(alt || 'Testing Kit')}</figcaption>
+                        </figure>`
+                    )
+                    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, text, url) =>
+                        `<a href="${url}" target="_blank" rel="noopener noreferrer">${escapeHtml(text)}</a>`
+                    );
+            };
+
+            const lines = sourceEl.textContent.split(/\r?\n/);
+            const out = [];
+            let listOpen = false;
+
+            const closeList = () => {
+                if (listOpen) {
+                    out.push('</ul>');
+                    listOpen = false;
+                }
+            };
+
+            for (const rawLine of lines) {
+                const line = rawLine.trim();
+                if (!line) {
+                    closeList();
+                    continue;
+                }
+
+                // Section markers like ###overall / ###vanilla
+                if (/^###\S+$/i.test(line)) {
+                    closeList();
+                    continue;
+                }
+
+                if (line.startsWith('# ')) {
+                    closeList();
+                    out.push(`<h3 style="margin: 1rem 0 0.5rem 0;">${renderInline(line.slice(2))}</h3>`);
+                    continue;
+                }
+
+                if (line.startsWith('## ')) {
+                    closeList();
+                    out.push(`<h4 style="margin: 1rem 0 0.5rem 0; color: var(--accent-color);">${renderInline(line.slice(3))}</h4>`);
+                    continue;
+                }
+
+                if (line.startsWith('### ')) {
+                    closeList();
+                    out.push(`<h5 style="margin: 0.75rem 0 0.5rem 0;">${renderInline(line.slice(4))}</h5>`);
+                    continue;
+                }
+
+                if (line.startsWith('- ')) {
+                    if (!listOpen) {
+                        out.push('<ul style="margin: 0 0 0.9rem 1.2rem;">');
+                        listOpen = true;
+                    }
+                    out.push(`<li>${renderInline(line.slice(2))}</li>`);
+                    continue;
+                }
+
+                closeList();
+                out.push(`<p style="margin: 0.5rem 0;">${renderInline(line)}</p>`);
+            }
+
+            closeList();
+            contentEl.innerHTML = out.join('');
+        })();
+    </script>
+</body>
+</html>

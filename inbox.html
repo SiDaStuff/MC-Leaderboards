@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inbox - MC Leaderboards</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="assets/fonts/local-fonts.css">
+    <script src="js/loading-overlay.js"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <style>
+        .inbox-layout {
+            max-width: 700px;
+            margin: 2rem auto;
+        }
+
+        .inbox-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .inbox-empty {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-muted);
+        }
+
+        .inbox-empty i {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            opacity: 0.4;
+        }
+
+        .inbox-item {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.85rem 1rem;
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .inbox-item:hover {
+            border-color: rgba(92, 210, 169, 0.3);
+        }
+
+        .inbox-item.unread {
+            border-left: 3px solid var(--accent-color);
+            background: rgba(30, 182, 129, 0.04);
+        }
+
+        .inbox-item.unread .inbox-item-title {
+            font-weight: 700;
+        }
+
+        .inbox-item-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .inbox-item-icon.system { background: rgba(52. 152, 219, 0.15); color: #3498db; }
+        .inbox-item-icon.warning { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .inbox-item-icon.danger { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .inbox-item-icon.success { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+        .inbox-item-icon.admin { background: rgba(168, 85, 247, 0.15); color: #a855f7; }
+
+        .inbox-item-body {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .inbox-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.15rem;
+        }
+
+        .inbox-item-title {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .inbox-item-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .inbox-item-preview {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .inbox-item-delete {
+            padding: 0.3rem;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+            align-self: center;
+        }
+
+        .inbox-item-delete:hover {
+            color: #ef4444;
+        }
+
+        /* Detail view */
+        .message-detail {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .message-detail-header {
+            padding: 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .message-detail-back {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            color: var(--accent-color);
+            cursor: pointer;
+            margin-bottom: 0.75rem;
+            background: none;
+            border: none;
+            padding: 0;
+        }
+
+        .message-detail-back:hover { text-decoration: underline; }
+
+        .message-detail-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 0.4rem 0;
+        }
+
+        .message-detail-meta {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+
+        .message-detail-body {
+            padding: 1.25rem;
+            font-size: 0.92rem;
+            line-height: 1.65;
+            color: var(--text-secondary);
+        }
+
+        .message-detail-body .rating-adjustment {
+            background: var(--tertiary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin: 0.75rem 0;
+            font-family: monospace;
+            font-size: 0.85rem;
+        }
+
+        .message-detail-body .rating-adjustment .line {
+            padding: 0.2rem 0;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .message-detail-body .rating-adjustment .restored {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .inbox-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .inbox-actions button {
+            padding: 0.35rem 0.7rem;
+            font-size: 0.8rem;
+            border: 1px solid var(--border-color);
+            background: var(--tertiary-bg);
+            color: var(--text-secondary);
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .inbox-actions button:hover {
+            border-color: var(--accent-color);
+            color: var(--text-primary);
+        }
+
+        @media (max-width: 640px) {
+            .inbox-item { gap: 0.5rem; }
+            .inbox-item-icon { display: none; }
+        }
+    </style>
+
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+                <span class="beta-badge">BETA</span>
+            </a>
+            <div class="navbar-search-wrapper">
+                <div class="navbar-search">
+                    <i class="fas fa-search navbar-search-icon"></i>
+                    <input type="text"
+                           class="navbar-search-input"
+                           id="searchInput"
+                           placeholder="Search player..."
+                           autocomplete="off">
+                </div>
+            </div>
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a href="index.html"><i class="fas fa-trophy"></i><span class="nav-label"> Leaderboards</span></a></li>
+                <li><a href="dashboard.html" id="navDashboard"><i class="fas fa-gamepad"></i><span class="nav-label"> Dashboard</span></a></li>
+                <li><a href="inbox.html" class="active" id="navInbox"><i class="fas fa-inbox"></i><span class="nav-label"> Inbox</span><span class="inbox-badge d-none" id="navInboxBadge"></span></a></li>
+                <li><a href="account.html" id="navAccount"><i class="fas fa-user-circle"></i><span class="nav-label"> Account</span></a></li>
+                <li><a href="login.html" id="navLogin"><i class="fas fa-right-to-bracket"></i><span class="nav-label"> Login</span></a></li>
+                <li><a href="#" id="navLogout" class="d-none" onclick="handleLogout()"><i class="fas fa-right-from-bracket"></i><span class="nav-label"> Logout</span></a></li>
+            </ul>
+            <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="container inbox-layout">
+        <div class="page-header">
+            <h1 class="page-title" style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-inbox" style="color: var(--accent-color);"></i>
+                Inbox
+            </h1>
+        </div>
+
+        <div id="authGate" class="d-none">
+            <div class="card">
+                <div class="alert alert-error">
+                    <strong>Authentication Required</strong><br>
+                    You must be <a href="login.html" style="color: inherit; text-decoration: underline;">logged in</a> to view your inbox.
+                </div>
+            </div>
+        </div>
+
+        <div id="inboxContent" class="d-none">
+            <div class="inbox-actions">
+                <button onclick="markAllRead()"><i class="fas fa-check-double"></i> Mark all read</button>
+                <button onclick="deleteAllRead()"><i class="fas fa-broom"></i> Clear read</button>
+                <button onclick="refreshInbox()"><i class="fas fa-rotate"></i> Refresh</button>
+            </div>
+
+            <div class="inbox-filter-tabs" id="inboxFilterTabs">
+                <button class="inbox-filter-tab active" data-filter="all" onclick="filterInbox('all')">All <span class="filter-count" id="filterCountAll">0</span></button>
+                <button class="inbox-filter-tab" data-filter="unread" onclick="filterInbox('unread')"><i class="fas fa-circle" style="font-size:0.5rem;vertical-align:middle;color:var(--accent-color);"></i> Unread <span class="filter-count" id="filterCountUnread">0</span></button>
+                <button class="inbox-filter-tab" data-filter="system" onclick="filterInbox('system')">System</button>
+                <button class="inbox-filter-tab" data-filter="match_finalized" onclick="filterInbox('match_finalized')">Matches</button>
+                <button class="inbox-filter-tab" data-filter="warning,blacklist" onclick="filterInbox('warning,blacklist')">Moderation</button>
+                <button class="inbox-filter-tab" data-filter="admin_message,admin_notice" onclick="filterInbox('admin_message,admin_notice')">Staff</button>
+                <button class="inbox-filter-tab" data-filter="report_resolved" onclick="filterInbox('report_resolved')">Reports</button>
+                <button class="inbox-filter-tab" data-filter="rating_adjustment" onclick="filterInbox('rating_adjustment')">Ratings</button>
+            </div>
+
+            <!-- Message list view -->
+            <div id="inboxListView">
+                <div class="inbox-list" id="inboxList">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+
+            <!-- Message detail view -->
+            <div id="inboxDetailView" class="d-none">
+                <div class="message-detail">
+                    <div class="message-detail-header">
+                        <button class="message-detail-back" onclick="closeMessageDetail()">
+                            <i class="fas fa-chevron-left"></i> Back
+                        </button>
+                        <h2 class="message-detail-title" id="detailTitle"></h2>
+                        <div class="message-detail-meta">
+                            <span id="detailFrom"></span>
+                            <span id="detailDate"></span>
+                        </div>
+                    </div>
+                    <div class="message-detail-body" id="detailBody"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="footer-logo">
+                <span>MC Leaderboards</span>
+            </div>
+            <div class="footer-links">
+                <a href="rules.html">Rules</a>
+                <a href="privacy-policy.html">Privacy Policy</a>
+                <a href="terms-of-service.html">Terms of Service</a>
+                <a href="support.html">Support</a>
+            </div>
+            <p class="footer-copyright">MC Leaderboards &copy; 2025. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="js/config.js" defer></script>
+    <script src="js/dev-mode-toggle.js" defer></script>
+    <script src="js/utils.js" defer></script>
+    <script src="js/firebase-service.js" defer></script>
+    <script src="js/app-state.js" defer></script>
+    <script src="js/api-service.js" defer></script>
+    <script src="js/player-search.js" defer></script>
+    <script src="js/firebase-auth-service.js" defer></script>
+    <script src="js/auth-guard.js" defer></script>
+    <script src="js/navigation.js" defer></script>
+    <script src="js/ui-enhancements.js" defer></script>
+    <script src="js/inbox.js" defer></script>
+</body>
+</html>

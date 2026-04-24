@@ -1,0 +1,936 @@
+        /* Google Account inspired layout */
+        .account-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .account-page-shell {
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .account-page-header {
+            margin-bottom: 2rem;
+        }
+
+        .account-page-title {
+            margin: 0 0 0.5rem 0;
+        }
+
+        .account-page-title-icon {
+            margin-right: 0.75rem;
+            color: var(--accent-color);
+        }
+
+        .account-section-title-icon {
+            margin-right: 0.5rem;
+            color: var(--warning-color);
+        }
+
+        .account-page-subtitle {
+            margin: 0;
+        }
+
+        .account-section-spaced {
+            margin-top: 1.5rem;
+        }
+
+        .account-status-text {
+            font-size: 0.9rem;
+            margin: 0.5rem 0;
+            color: white;
+        }
+
+        .account-button-tight {
+            margin-top: 0.75rem;
+        }
+
+        .account-button-spaced {
+            margin-top: 1rem;
+        }
+
+        .account-divider {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .account-divider-tight {
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .account-helper-text {
+            margin: 0;
+            color: var(--text-muted);
+        }
+
+        .account-inline-note {
+            font-size: 0.85rem;
+        }
+
+        .account-card-action {
+            flex: 1;
+        }
+
+        .account-card-alert-spaced {
+            margin-bottom: 1rem;
+        }
+
+        .account-plus-summary {
+            margin-bottom: 1.5rem;
+        }
+
+        .account-inline-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .account-gradient-preview {
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .account-link-underline {
+            color: inherit;
+            text-decoration: underline;
+        }
+
+        .account-linked-summary {
+            margin-bottom: 1rem;
+        }
+
+        .account-linked-label {
+            margin: 0;
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        .account-linked-value {
+            margin: 0.5rem 0 0 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .account-modal-shell {
+            text-align: left;
+        }
+
+        .account-modal-card {
+            padding: 1rem;
+            border-radius: 12px;
+            border: 1px solid rgba(242, 201, 76, 0.22);
+            background: rgba(0, 0, 0, 0.15);
+        }
+
+        .account-modal-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.35rem;
+        }
+
+        .account-modal-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .account-range-inline {
+            width: 100px;
+        }
+
+        .account-number-inline {
+            width: 60px;
+        }
+
+        .account-swap-btn {
+            padding: 0.25rem 0.5rem;
+            margin-left: 0.5rem;
+        }
+
+        .account-reload-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 992px) {
+            .account-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Account Overview Section */
+        .account-overview {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, rgba(92, 210, 169, 0.08), rgba(52, 152, 219, 0.08));
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            margin-bottom: 2rem;
+            grid-column: 1 / -1;
+        }
+
+        .account-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--accent-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            flex-shrink: 0;
+            color: white;
+            font-weight: bold;
+        }
+
+        .account-info {
+            flex: 1;
+        }
+
+        .account-info h2 {
+            margin: 0 0 0.25rem 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .account-info p {
+            margin: 0.25rem 0;
+            color: #d1d5db;
+            font-size: 0.95rem;
+        }
+
+        .account-badges {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+            color: white;
+        }
+
+        .account-role-actions {
+            display: flex;
+            gap: 0.6rem;
+            flex-wrap: wrap;
+            margin-top: 0.9rem;
+        }
+
+        .account-role-action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.58rem 0.9rem;
+            border-radius: 999px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(15, 23, 42, 0.72);
+            color: #f8fafc;
+            font-size: 0.82rem;
+            font-weight: 700;
+            letter-spacing: 0.01em;
+            cursor: pointer;
+            transition: border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+        }
+
+        .account-role-action-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .account-role-action-btn.is-moderator {
+            color: #facc15;
+            border-color: rgba(250, 204, 21, 0.28);
+            background: rgba(250, 204, 21, 0.08);
+        }
+
+        .account-role-action-btn.is-leaderboard {
+            color: #60a5fa;
+            border-color: rgba(96, 165, 250, 0.28);
+            background: rgba(96, 165, 250, 0.08);
+        }
+
+        .standing-section {
+            border: 1px solid rgba(92, 210, 169, 0.25);
+            background: linear-gradient(160deg, rgba(92, 210, 169, 0.1), rgba(29, 35, 55, 0.6));
+        }
+
+        .standing-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            color: white;
+            font-weight: 600;
+        }
+
+        .standing-track {
+            width: 100%;
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+
+        .standing-fill {
+            height: 100%;
+            width: 0;
+            transition: width 0.35s ease;
+            background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+        }
+
+        .standing-levels {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 0.35rem;
+            margin-top: 0.6rem;
+            color: #d1d5db;
+            font-size: 0.72rem;
+            text-align: center;
+        }
+
+        .standing-levels span.active {
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        .standing-history-list {
+            margin-top: 1rem;
+            max-height: 180px;
+            overflow: auto;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 0.75rem;
+        }
+
+        .standing-history-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            color: #d1d5db;
+            font-size: 0.85rem;
+        }
+
+        .standing-history-item:last-child {
+            border-bottom: none;
+        }
+
+        /* Status Badges */
+        .status-badge {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-active {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success-color);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning-color);
+        }
+
+        .badge-critical {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .badge-inactive {
+            background: rgba(107, 114, 128, 0.15);
+            color: var(--text-muted);
+        }
+
+        /* Status Cards */
+        .status-card {
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: var(--card-bg);
+        }
+
+        .status-card-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: white;
+        }
+
+        .status-card-header h3 {
+            color: white;
+        }
+
+        .status-card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        .status-card-icon.tester {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+
+        .status-card-icon.plus {
+            background: rgba(242, 201, 76, 0.2);
+            color: #f2c94c;
+        }
+
+        .status-card-icon.security {
+            background: rgba(52, 152, 219, 0.2);
+            color: #3498db;
+        }
+
+        .status-card-icon.warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning-color);
+        }
+
+        .status-card-icon.muted {
+            background: rgba(149, 165, 166, 0.2);
+            color: #95a5a6;
+        }
+
+        .status-card-icon.admin {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+
+        .status-card-icon.settings {
+            background: rgba(149, 165, 166, 0.2);
+            color: #95a5a6;
+        }
+
+        .status-card-title {
+            flex: 1;
+        }
+
+        .status-card-title h3 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .account-connection-list {
+            display: grid;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .account-connection-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.65rem 0.8rem;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.04);
+            color: white;
+        }
+
+        .account-connection-item strong {
+            font-size: 0.92rem;
+            font-weight: 600;
+        }
+
+        .account-connection-item span {
+            font-size: 0.82rem;
+            color: #d1d5db;
+        }
+
+        .status-card-subtitle {
+            margin: 0;
+            font-size: 0.85rem;
+            color: #d1d5db;
+        }
+
+        /* Tier Tester Section */
+        .tier-tester-content {
+            display: table;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+
+        .tier-tester-row {
+            display: table-row;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .tier-tester-row:last-child {
+            border-bottom: none;
+        }
+
+        .tier-tester-label {
+            display: table-cell;
+            padding: 0.75rem 0;
+            color: #9ca3af;
+            font-size: 0.9rem;
+            width: 40%;
+            padding-right: 1rem;
+        }
+
+        .tier-tester-value {
+            display: table-cell;
+            padding: 0.75rem 0;
+            font-weight: 500;
+            color: white;
+        }
+
+        /* Plus Subscription Section */
+        .plus-badge {
+            display: inline-block;
+            background: linear-gradient(135deg, #f2c94c, #d9a441);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+
+        .plus-section {
+            background: linear-gradient(135deg, rgba(242, 201, 76, 0.05), rgba(217, 164, 65, 0.05));
+        }
+
+        .plus-section .status-card-icon {
+            font-size: 1.5rem;
+        }
+
+        .expiry-display {
+            font-size: 0.9rem;
+            margin: 0.75rem 0 0 0;
+            color: #d1d5db;
+        }
+
+        .expiry-warning {
+            color: var(--warning-color);
+            font-weight: 500;
+        }
+
+        .expiry-critical {
+            color: var(--danger-color);
+            font-weight: 600;
+        }
+
+        /* Settings Grid */
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Buttons in card */
+        .card-actions {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .card-actions .btn {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        /* Section Title */
+        .section-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #9ca3af;
+            margin: 2rem 0 1rem 0;
+            grid-column: 1 / -1;
+        }
+
+        /* Form Elements in Card */
+        .card-form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .card-form-label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: white;
+        }
+
+        /* Dropdown field styling inside cards */
+        .card .form-input,
+        .card select {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.75rem;
+            color: var(--text-default);
+            font-size: 0.95rem;
+        }
+
+        .card .form-input:focus,
+        .card select:focus {
+            border-color: var(--accent-color);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(92, 210, 169, 0.1);
+        }
+
+        /* Help text */
+        .form-help-text {
+            font-size: 0.85rem;
+            color: #d1d5db;
+            margin-top: 0.25rem;
+        }
+
+        /* Checklist */
+        .checklist-item {
+            display: flex;
+            gap: 1rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .checklist-item:last-child {
+            border-bottom: none;
+        }
+
+        .checklist-icon {
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border-radius: 50%;
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            font-size: 0.75rem;
+        }
+
+        .checklist-content h4 {
+            margin: 0 0 0.25rem 0;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .checklist-content p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Tabs for settings */
+        .settings-tabs {
+            display: flex;
+            gap: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+            grid-column: 1 / -1;
+        }
+
+        .settings-tabs .tab {
+            padding: 0.75rem 1rem;
+            border: none;
+            background: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .settings-tabs .tab:hover {
+            color: var(--text-default);
+        }
+
+        .settings-tabs .tab.active {
+            color: var(--accent-color);
+            border-bottom-color: var(--accent-color);
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Alert boxes for cards */
+        .card-alert {
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-start;
+        }
+
+        .card-alert.info {
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            color: #3498db;
+        }
+
+        .card-alert.warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: #f59e0b;
+        }
+
+        .card-alert i {
+            flex-shrink: 0;
+            margin-top: 0.15rem;
+        }
+
+        /* Skill + retirement redesign */
+        .mclb-config-grid {
+            display: grid;
+            gap: 0.85rem;
+        }
+
+        .mclb-config-item {
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 0.9rem;
+        }
+
+        .mclb-config-head {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .mclb-config-head img {
+            width: 22px;
+            height: 22px;
+            flex-shrink: 0;
+        }
+
+        .mclb-config-title {
+            color: white;
+            font-weight: 600;
+            flex: 1;
+        }
+
+        .mclb-config-state {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .mclb-choice-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.55rem;
+        }
+
+        .mclb-choice {
+            width: 100%;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: var(--bg-color);
+            color: white;
+            padding: 0.65rem 0.7rem;
+            text-align: left;
+            cursor: pointer;
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+
+        .mclb-choice:hover {
+            border-color: rgba(255, 255, 255, 0.28);
+        }
+
+        .mclb-choice.selected {
+            border-color: var(--warning-color);
+            background: rgba(245, 158, 11, 0.12);
+        }
+
+        .mclb-choice.disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
+        .mclb-choice-label {
+            display: block;
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: white;
+            line-height: 1.2;
+        }
+
+        .mclb-choice-sub {
+            display: block;
+            font-size: 0.76rem;
+            color: #cbd5e1;
+            margin-top: 0.2rem;
+        }
+
+        .mclb-segment {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.45rem;
+            padding: 0.3rem;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+        }
+
+        .mclb-segment .retirement-option {
+            border: 1px solid transparent;
+            border-radius: 8px;
+            background: transparent;
+            color: #d1d5db;
+            padding: 0.55rem 0.6rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .mclb-segment .retirement-option.selected[data-retired="false"] {
+            background: rgba(16, 185, 129, 0.12);
+            border-color: var(--success-color);
+            color: var(--success-color);
+        }
+
+        .mclb-segment .retirement-option.selected[data-retired="true"] {
+            background: rgba(245, 158, 11, 0.12);
+            border-color: var(--warning-color);
+            color: var(--warning-color);
+        }
+
+        .mclb-segment .retirement-option.disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+
+        .mclb-cooldown-note {
+            margin-top: 0.6rem;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+        }
+
+        @media (max-width: 700px) {
+            .mclb-choice-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Report history UI */
+        .report-summary-row {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.6rem;
+            margin-bottom: 1rem;
+        }
+
+        .report-summary-pill {
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: var(--tertiary-bg);
+            padding: 0.65rem;
+            text-align: center;
+        }
+
+        .report-summary-pill .k {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .report-summary-pill .v {
+            font-size: 1rem;
+            font-weight: 700;
+            color: white;
+            margin-top: 0.15rem;
+        }
+
+        .report-list {
+            display: grid;
+            gap: 0.65rem;
+        }
+
+        .report-item {
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            background: var(--tertiary-bg);
+            padding: 0.7rem;
+        }
+
+        .report-item-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.35rem;
+        }
+
+        .report-item-title {
+            font-weight: 700;
+            color: white;
+            font-size: 0.95rem;
+        }
+
+        .report-item-meta {
+            color: #cbd5e1;
+            font-size: 0.83rem;
+            line-height: 1.5;
+        }
+
+        .report-resolution {
+            margin-top: 0.5rem;
+            border-top: 1px dashed rgba(255,255,255,0.12);
+            padding-top: 0.5rem;
+            color: #d1d5db;
+            font-size: 0.82rem;
+        }
+
+        @media (max-width: 760px) {
+            .report-summary-row {
+                grid-template-columns: 1fr;
+            }
+        }

@@ -1,0 +1,2048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - MC Leaderboards</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+    
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/loading-overlay.js"></script>
+    
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+                <span class="beta-badge">BETA</span>
+            </a>
+            <div class="navbar-search-wrapper">
+                <div class="navbar-search">
+                    <i class="fas fa-search navbar-search-icon"></i>
+                    <input type="text"
+                           class="navbar-search-input"
+                           id="searchInput"
+                           placeholder="Search player..."
+                           autocomplete="off">
+                </div>
+            </div>
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a href="index.html">Leaderboards</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="account.html">Account</a></li>
+                <li><a href="#" id="navLogout" onclick="handleLogout()">Logout</a></li>
+            </ul>
+            <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container" style="margin-top: 2rem; margin-bottom: 2rem;">
+        <div class="page-header">
+            <h1 class="page-title">Admin Panel</h1>
+            <p class="page-subtitle">Manage applications, blacklist, and users</p>
+            <div class="admin-page-summary">
+                <div class="admin-page-summary-text" id="adminContextSummary">Loading admin context...</div>
+                <div class="admin-capability-chip-row" id="adminCapabilityChips"></div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row admin-tab-grid" id="adminTabs">
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('management')" id="tab-management">
+                        Users & Players
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('moderation')" id="tab-moderation">
+                        Moderation
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('reported')" id="tab-reported">
+                        Reports
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('support')" id="tab-support">
+                        Support
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('ban-waves')" id="tab-ban-waves">
+                        <i class="fas fa-wave-square"></i> Ban Waves
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('banned')" id="tab-banned">
+                        Bans
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('testing')" id="tab-testing">
+                        Testing
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('ratings')" id="tab-ratings">
+                        Manual Ratings
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('audit')" id="tab-audit">
+                        Audit Log
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('servers')" id="tab-servers">
+                        Whitelisted Servers
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('matches')" id="tab-matches">
+                        Matches
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('operations')" id="tab-operations">
+                        Operations
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('security-scores')" id="tab-security-scores">
+                        <i class="fas fa-shield-alt"></i> Security Scores
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('roles')" id="tab-roles">
+                        <i class="fas fa-id-badge"></i> Roles
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('resolve')" id="tab-resolve">
+                        <i class="fas fa-scale-balanced"></i> Resolve
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('send-message')" id="tab-send-message">
+                        <i class="fas fa-envelope"></i> Send Message
+                    </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('punish')" id="tab-punish">
+                        <i class="fas fa-skull-crossbones"></i> Punish
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Roles Tab -->
+        <div id="rolesTab" class="tab-content d-none">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-id-badge"></i> Roles
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Load a user by email or UID, then toggle the built-in roles used across the site.</p>
+                    <form id="rolesLookupForm" onsubmit="loadRolesEditorUser(event)">
+                        <div class="row">
+                            <div class="col-12 col-md-9">
+                                <label class="form-label" for="rolesLookupInput">Email or UID</label>
+                                <input type="text" class="form-input" id="rolesLookupInput" maxlength="180" required placeholder="user@example.com or Firebase UID">
+                            </div>
+                            <div class="col-12 col-md-3" style="display:flex; align-items:flex-end;">
+                                <button type="submit" class="btn btn-primary" style="width:100%;">
+                                    <i class="fas fa-search"></i> Load
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-user-check"></i> Assigned Roles</h3>
+                </div>
+                <div class="card-body">
+                    <div id="rolesEditorSummary" class="empty-state">
+                        <p class="text-muted">Load a user to edit Tier Tester, Leaderboard Mod, and Moderator access.</p>
+                    </div>
+                    <form id="rolesEditorForm" onsubmit="saveRolesEditor(event)" class="d-none">
+                        <input type="hidden" id="rolesEditorUserId" value="">
+                        <div class="row">
+                            <div class="col-12 col-md-4">
+                                <label class="staff-role-action-option">
+                                    <input type="checkbox" id="rolesEditorTierTester">
+                                    <span><i class="fas fa-check"></i> Tier Tester</span>
+                                </label>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="staff-role-action-option">
+                                    <input type="checkbox" id="rolesEditorLeaderboardModerator">
+                                    <span><i class="fas fa-filter"></i> Leaderboard Mod</span>
+                                </label>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <label class="staff-role-action-option">
+                                    <input type="checkbox" id="rolesEditorModerator">
+                                    <span><i class="fas fa-shield-alt"></i> Moderator</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top: 1rem;">
+                            <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Save</button>
+                            <button type="button" class="btn btn-secondary" onclick="resetRolesEditor()"><i class="fas fa-undo"></i> Reset</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Moderation Tab -->
+        <div id="moderationTab" class="tab-content d-none">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-gavel"></i> Moderation
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-primary" id="modTabTester" onclick="switchModerationTab('tester')">
+                                    <i class="fas fa-star"></i> Tier Tester Applications
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="modTabBlacklist" onclick="switchModerationTab('blacklist')">
+                                    <i class="fas fa-ban"></i> Blacklist
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="modTabTools" onclick="switchModerationTab('tools')">
+                                    <i class="fas fa-gavel"></i> Moderator Tools
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tier Tester Applications Section -->
+                    <div id="testerModSection">
+                        <div class="alert" style="background: rgba(242, 201, 76, 0.08); border: 1px solid rgba(242, 201, 76, 0.18); margin-bottom: 1rem;">
+                            <i class="fas fa-toggle-on" style="color:#f2c94c;"></i>
+                            <strong>Applications Toggle:</strong>
+                            <span class="text-muted">Admins can open/close Tier Tester applications globally.</span>
+                            <div style="display:flex; align-items:center; gap:0.75rem; margin-top:0.75rem; flex-wrap:wrap;">
+                                <label class="form-label" style="display:flex; align-items:center; gap:0.5rem; margin:0;">
+                                    <input type="checkbox" id="tierTesterAppsOpenToggle">
+                                    Tier Tester applications are open
+                                </label>
+                                <button class="btn btn-secondary btn-sm" type="button" onclick="saveTierTesterAppsOpenSetting()" id="saveTierTesterAppsOpenBtn">
+                                    <i class="fas fa-save"></i> Save
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tester Applications Filters -->
+                        <div style="margin-bottom: 1rem; padding: 1rem; background: var(--border-color); border-radius: 8px;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label">Filter by Status</label>
+                                    <select class="form-input" id="testerAppStatusFilter" onchange="loadTierTesterApplications()">
+                                        <option value="pending">Pending (Unhandled)</option>
+                                        <option value="all">All Applications</option>
+                                        <option value="approved">Approved</option>
+                                        <option value="denied">Denied</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Sort by</label>
+                                    <select class="form-input" id="testerAppSortFilter" onchange="loadTierTesterApplications()">
+                                        <option value="newest">Newest First</option>
+                                        <option value="oldest">Oldest First</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="tierTesterApplicationsList">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+
+                    <!-- Blacklist Section -->
+                    <div id="blacklistModSection" class="d-none">
+                        <div class="alert" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.22); margin-bottom: 1rem;">
+                            <i class="fas fa-shield-alt"></i>
+                            <strong>Moderation Controls:</strong>
+                            <span class="text-muted">Create permanent or temporary blacklist entries and disable specific account functions.</span>
+                        </div>
+                        <form id="blacklistForm" onsubmit="handleAddBlacklist(event)" class="mb-4">
+                            <div class="row">
+                                <div class="col-12 col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="blacklistUsername">Minecraft Username</label>
+                                        <input type="text"
+                                               class="form-input"
+                                               id="blacklistUsername"
+                                               required
+                                               placeholder="PlayerName">
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="blacklistReason">Reason</label>
+                                        <input type="text"
+                                               class="form-input"
+                                               id="blacklistReason"
+                                               placeholder="Reason for blacklisting...">
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="blacklistUserId">Firebase UID or Minecraft UUID (Optional)</label>
+                                        <input type="text"
+                                               class="form-input"
+                                               id="blacklistUserId"
+                                               placeholder="Target user UID for history and standing">
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <div class="form-group">
+                                        <label class="form-label" for="blacklistDurationHours">Duration (hours)</label>
+                                        <input type="number"
+                                               class="form-input"
+                                               id="blacklistDurationHours"
+                                               min="0"
+                                               step="1"
+                                               value="0"
+                                               placeholder="0 = permanent blacklist">
+                                        <small class="text-muted">Set to 0 for permanent, or choose a temporary duration.</small>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">Disable Functions</label>
+                                    <div class="row">
+                                        <div class="col-6 col-md-4"><label><input type="checkbox" id="blDisableChat"> Chat</label></div>
+                                        <div class="col-6 col-md-4"><label><input type="checkbox" id="blDisableQueue"> Queue</label></div>
+                                        <div class="col-6 col-md-4"><label><input type="checkbox" id="blDisableQueueJoin"> Queue Join</label></div>
+                                        <div class="col-6 col-md-4"><label><input type="checkbox" id="blDisableQueueLeave"> Queue Leave</label></div>
+                                        <div class="col-6 col-md-4"><label><input type="checkbox" id="blDisableReports"> Reports</label></div>
+                                        <div class="col-6 col-md-4"><label><input type="checkbox" id="blDisableReportSubmit"> Report Submit</label></div>
+                                        <div class="col-6 col-md-4"><label><input type="checkbox" id="blDisableAccountChanges"> Account Changes</label></div>
+                                        <div class="col-6 col-md-4"><label><input type="checkbox" id="blDisableApplications"> Applications</label></div>
+                                        <div class="col-6 col-md-4"><label><input type="checkbox" id="blDisableApplicationsSubmit"> Application Submit</label></div>
+                                        <div class="col-6 col-md-4"><label><input type="checkbox" id="blDisableSupportMessages"> Support Messages</label></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-ban"></i> Add to Blacklist
+                            </button>
+                        </form>
+
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-12 col-md-5">
+                                        <label class="form-label" for="blacklistSearchInput">Filter</label>
+                                        <input type="text" class="form-input" id="blacklistSearchInput" placeholder="username / account / uid / uuid / reason">
+                                    </div>
+                                    <div class="col-6 col-md-3">
+                                        <label class="form-label" for="blacklistIncludeExpired">Include expired</label>
+                                        <select class="form-input" id="blacklistIncludeExpired">
+                                            <option value="false">No</option>
+                                            <option value="true">Yes</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-6 col-md-2">
+                                        <label class="form-label" for="blacklistPageSize">Page size</label>
+                                        <select class="form-input" id="blacklistPageSize">
+                                            <option value="10">10</option>
+                                            <option value="25" selected>25</option>
+                                            <option value="50">50</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-2">
+                                        <button type="button" class="btn btn-secondary w-100" onclick="applyBlacklistFilters()">
+                                            <i class="fas fa-filter"></i> Apply
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="blacklistList">
+                            <div class="empty-state">
+                                <p class="text-muted">No blacklisted players</p>
+                            </div>
+                        </div>
+                        <div id="blacklistPagination" class="d-flex justify-content-between align-items-center mt-3" style="display:none;">
+                            <button class="btn btn-secondary btn-sm" type="button" id="blacklistPrevBtn" onclick="changeBlacklistPage(-1)">Previous</button>
+                            <span id="blacklistPageInfo" class="text-muted"></span>
+                            <button class="btn btn-secondary btn-sm" type="button" id="blacklistNextBtn" onclick="changeBlacklistPage(1)">Next</button>
+                        </div>
+                    </div>
+
+                    <div id="moderatorToolsModSection" class="d-none">
+                        <div class="alert" style="background: rgba(59, 178, 138, 0.08); border: 1px solid rgba(59, 178, 138, 0.22); margin-bottom: 1rem;">
+                            <i class="fas fa-user-shield"></i>
+                            <strong>Capability-Based Tools:</strong>
+                            <span class="text-muted">These tools are shown from your real moderation permissions, so leaderboard moderator and moderator access can both appear together.</span>
+                        </div>
+
+                        <div class="card mb-4" id="adminModeratorToolsCard" style="display: none;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #17352b, #10261f); color: white; border: none;">
+                                <h3 class="card-title" style="color: white; margin: 0;">
+                                    <i class="fas fa-comments"></i> Chat Moderation
+                                </h3>
+                            </div>
+                            <div class="card-body" style="display: grid; gap: 1.25rem;">
+                                <div id="adminModerationToolsIntro" class="text-muted"></div>
+                                <div id="adminModerationChatSection" style="display: none;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                                        <h4 style="margin: 0;">Chat Reports</h4>
+                                        <button type="button" class="btn btn-secondary btn-sm" onclick="loadAdminModeratorChatReports()">
+                                            <i class="fas fa-sync-alt"></i> Refresh
+                                        </button>
+                                    </div>
+                                    <div id="adminModerationChatReportsList" class="text-muted">Loading chat reports...</div>
+                                    <form id="adminModerationChatRestrictionForm" style="margin-top: 1rem; display: grid; gap: 0.75rem;" onsubmit="submitAdminModeratorChatRestriction(event)">
+                                        <div class="row">
+                                            <div class="col-12 col-md-6">
+                                                <label class="form-label" for="adminModerationChatTarget">Player Username or User ID</label>
+                                                <input class="form-input" id="adminModerationChatTarget" maxlength="120" placeholder="PlayerName or uid">
+                                            </div>
+                                            <div class="col-12 col-md-3">
+                                                <label class="form-label" for="adminModerationChatDuration">Duration (hours)</label>
+                                                <input class="form-input" id="adminModerationChatDuration" type="number" min="1" max="8760" value="24">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="form-label" for="adminModerationChatReason">Reason</label>
+                                            <input class="form-input" id="adminModerationChatReason" maxlength="250" placeholder="Explain why chat access is being restricted">
+                                        </div>
+                                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                            <button class="btn btn-warning" type="submit">
+                                                <i class="fas fa-comment-slash"></i> Restrict Chat
+                                            </button>
+                                            <button class="btn btn-secondary" type="button" onclick="clearAdminModeratorChatRestriction()">
+                                                <i class="fas fa-unlock"></i> Restore Chat
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card" id="adminLeaderboardToolsCard" style="display: none;">
+                            <div class="card-header" style="background: linear-gradient(135deg, #2f2612, #5a4520); color: white; border: none;">
+                                <h3 class="card-title" style="color: white; margin: 0;">
+                                    <i class="fas fa-filter"></i> Leaderboard Moderation
+                                </h3>
+                            </div>
+                            <div class="card-body" style="display: grid; gap: 1.25rem;">
+                                <div id="adminLeaderboardToolsIntro" class="text-muted"></div>
+                                <div id="adminLeaderboardModerationSection" style="display: none;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                                        <h4 style="margin: 0;">Leaderboard Filters</h4>
+                                        <button type="button" class="btn btn-secondary btn-sm" onclick="loadAdminLeaderboardModerationFilters()">
+                                            <i class="fas fa-sync-alt"></i> Refresh
+                                        </button>
+                                    </div>
+                                    <form id="adminLeaderboardModerationForm" style="display: grid; gap: 0.75rem;" onsubmit="submitAdminLeaderboardFilter(event)">
+                                        <div class="row">
+                                            <div class="col-12 col-md-6">
+                                                <label class="form-label" for="adminLeaderboardFilterTarget">Player Username or User ID</label>
+                                                <input class="form-input" id="adminLeaderboardFilterTarget" maxlength="120" placeholder="PlayerName or uid">
+                                            </div>
+                                            <div class="col-12 col-md-6">
+                                                <label class="form-label" for="adminLeaderboardFilterReason">Reason</label>
+                                                <input class="form-input" id="adminLeaderboardFilterReason" maxlength="250" placeholder="Optional moderation note">
+                                            </div>
+                                        </div>
+                                        <label class="form-label" style="display: flex; align-items: center; gap: 0.65rem;">
+                                            <input type="checkbox" id="adminLeaderboardFilterGlobal">
+                                            <span>Hide from the global leaderboard</span>
+                                        </label>
+                                        <div>
+                                            <div class="form-label">Hide from individual gamemodes</div>
+                                            <div id="adminLeaderboardGamemodeFilterGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.6rem;"></div>
+                                        </div>
+                                        <button class="btn btn-primary" type="submit">
+                                            <i class="fas fa-filter"></i> Save Leaderboard Filter
+                                        </button>
+                                    </form>
+                                    <div id="adminLeaderboardModeratorList" class="text-muted" style="margin-top: 1rem;">Loading leaderboard filters...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Blacklist Tab (Merged into Moderation) -->
+        <div id="blacklistTab" class="tab-content d-none">
+            <div class="card">
+                <div class="card-body">
+                    <div class="empty-state">
+                        <p class="text-muted">Blacklist has moved to the Moderation tab.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users & Players (Combined) Tab -->
+        <div id="managementTab" class="tab-content d-none">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-search"></i> Search Users & Players
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form id="unifiedSearchForm" onsubmit="handleUnifiedSearch(event)" class="mb-4">
+                        <div class="form-group">
+                            <label class="form-label" for="unifiedSearch">Search by Minecraft Username or Account</label>
+                            <div class="row">
+                                <div class="col-10">
+                                    <input type="text"
+                                           class="form-input"
+                                           id="unifiedSearch"
+                                           placeholder="Enter username, email, or UID..."
+                                           required>
+                                </div>
+                                <div class="col-2">
+                                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="unifiedSearchResults">
+                        <div class="empty-state">
+                            <p class="text-muted">Use the search above to find users and players</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-exclamation-triangle"></i> Issue Warning
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form id="warnForm" onsubmit="event.preventDefault(); if (typeof warnPlayer === 'function') { warnPlayer(); } else { alert('Please wait for the page to load completely.'); }">
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label" for="warnUserId">User ID (Firebase UID)</label>
+                                    <input type="text"
+                                           class="form-input"
+                                           id="warnUserId"
+                                           placeholder="Enter Firebase UID..."
+                                           required>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label" for="warnReason">Warning Reason</label>
+                                    <input type="text"
+                                           class="form-input"
+                                           id="warnReason"
+                                           placeholder="Enter warning reason..."
+                                           required>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-warning" id="warnSubmitBtn">
+                            <i class="fas fa-exclamation-triangle"></i> Issue Warning
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-plus"></i> Add Player to Leaderboard
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form id="addPlayerForm" onsubmit="handleAddPlayer(event)">
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label" for="playerUsername">Minecraft Username</label>
+                                    <input type="text"
+                                           class="form-input"
+                                           id="playerUsername"
+                                           required
+                                           placeholder="PlayerName">
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label" for="playerRegion">Region (Optional)</label>
+                                    <select class="form-select" id="playerRegion">
+                                        <option value="">Select region...</option>
+                                        <option value="NA" style="background-color: #412328; color: white;">NA - North America</option>
+                                        <option value="EU" style="background-color: #203e20; color: white;">EU - Europe</option>
+                                        <option value="AS" style="background-color: #402c3f; color: white;">AS - Asia</option>
+                                        <option value="SA" style="background-color: #1f3845; color: white;">SA - South America</option>
+                                        <option value="AU" style="background-color: #382e27; color: white;">AU - Australia</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Add Player
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-ticket-alt"></i> Plus Purchase Codes
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form id="plusCodeCreateForm" onsubmit="handleCreatePlusCode(event)">
+                        <div class="row">
+                            <div class="col-12 col-md-3">
+                                <label class="form-label" for="plusCodeValue">Code (optional)</label>
+                                <input type="text" class="form-input" id="plusCodeValue" maxlength="6" placeholder="Auto-generate">
+                                <div class="form-help">Leave blank to auto-generate a 6-digit code.</div>
+                            </div>
+                            <div class="col-12 col-md-2">
+                                <label class="form-label" for="plusCodeYears">Years</label>
+                                <input type="number" class="form-input" id="plusCodeYears" min="1" max="5" value="1">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label" for="plusCodeAssignedUserId">Assign to UID (optional)</label>
+                                <input type="text" class="form-input" id="plusCodeAssignedUserId" placeholder="Firebase UID">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="form-label" for="plusCodeNote">Note (optional)</label>
+                                <input type="text" class="form-input" id="plusCodeNote" maxlength="120" placeholder="Internal note">
+                            </div>
+                            <div class="col-12 col-md-1 d-flex align-items-end">
+                                <button type="submit" class="btn btn-success" style="width:100%;">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div class="d-flex justify-content-between align-items-center mt-3 mb-2" style="gap:0.5rem; flex-wrap:wrap;">
+                        <strong>Existing Codes</strong>
+                        <button class="btn btn-secondary btn-sm" onclick="loadPlusCodesAdminPanel()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                    <div id="plusCodesAdminList">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- Management Section (Inline) -->
+            <div id="managementSection" class="management-section d-none mt-4">
+                <div class="card">
+                    <div class="management-section-header">
+                        <h2 id="managementSectionTitle">Manage Player/User</h2>
+                        <button class="btn btn-secondary" onclick="closeManagementScreen()">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                    </div>
+                    <div class="management-section-body">
+                        <div id="managementIdentitySummary" class="minimal-note" style="margin-bottom: 1rem; display: none;"></div>
+                        <div class="management-action-selector">
+                            <h3>Select Action</h3>
+                            <div class="action-grid" id="managementActionGrid">
+                                <!-- Actions will be populated by JavaScript -->
+                            </div>
+                        </div>
+                        <div class="management-form-container" id="managementFormContainer" style="display: none;">
+                            <h3 id="managementFormTitle">Action Details</h3>
+                            <form id="managementForm">
+                                <!-- Form fields will be populated dynamically -->
+                            </form>
+                            <div class="management-form-actions">
+                                <button class="btn btn-primary" onclick="executeManagementAction()">
+                                    <i class="fas fa-check"></i> Execute
+                                </button>
+                                <button class="btn btn-secondary" onclick="resetManagementForm()">
+                                    <i class="fas fa-undo"></i> Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Banned Tab -->
+        <div id="bannedTab" class="tab-content d-none">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-ban"></i> Ban Account
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form id="banAccountForm" onsubmit="handleBanAccount(event)">
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label" for="banIdentifier">Email or Firebase UID</label>
+                                    <input type="text"
+                                           class="form-input"
+                                           id="banIdentifier"
+                                           required
+                                           placeholder="user@example.com or firebase-uid">
+                                    <div class="form-help">Enter the user's email address or Firebase UID</div>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <div class="form-group">
+                                    <label class="form-label" for="banDuration">Ban Duration</label>
+                                    <select class="form-select" id="banDuration" required>
+                                        <option value="">Select duration...</option>
+                                        <option value="1h">1 Hour</option>
+                                        <option value="24h">24 Hours</option>
+                                        <option value="7d">7 Days</option>
+                                        <option value="30d">30 Days</option>
+                                        <option value="90d">90 Days</option>
+                                        <option value="permanent">Permanent</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="banReason">Reason (Optional)</label>
+                            <textarea class="form-textarea"
+                                      id="banReason"
+                                      placeholder="Reason for banning this account..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-ban"></i> Ban Account
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-list"></i> Search Banned Accounts
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form id="searchBannedForm" onsubmit="handleSearchBanned(event)" class="mb-4">
+                        <div class="form-group">
+                            <label class="form-label" for="bannedSearch">Search by Email, Firebase UID, or Reason</label>
+                            <div class="row">
+                                <div class="col-10">
+                                    <input type="text"
+                                           class="form-input"
+                                           id="bannedSearch"
+                                           placeholder="Enter search term..."
+                                           required>
+                                </div>
+                                <div class="col-2">
+                                    <button type="submit" class="btn btn-primary" style="width: 100%;">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="bannedAccountsList">
+                        <div class="empty-state">
+                            <p class="text-muted">Use the search above to find banned accounts</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reported Tab -->
+        <div id="reportedTab" class="tab-content d-none">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-flag"></i> All Reports
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-primary" id="reportsTabAlt" onclick="switchReportsTab('alt')">
+                                    <i class="fas fa-users"></i> Alt Reports
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="reportsTabSecurity" onclick="switchReportsTab('security')">
+                                    <i class="fas fa-shield-alt"></i> Security Logs
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="reportsTabNoShow" onclick="switchReportsTab('noshow')">
+                                    <i class="fas fa-user-clock"></i> No Show Reports
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="reportsTabUser" onclick="switchReportsTab('user')">
+                                    <i class="fas fa-flag"></i> User Reports
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="reportsTabMessages" onclick="switchReportsTab('messages')">
+                                    <i class="fas fa-comments"></i> Messages
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Alt Reports Section -->
+                    <div id="altReportsSection">
+                        <form id="reportedSearchForm" onsubmit="handleSearchReported(event)" class="mb-4">
+                            <div class="form-group">
+                                <label class="form-label" for="reportedSearch">Search by Email, Firebase UID, or Group ID</label>
+                                <div class="row">
+                                    <div class="col-10">
+                                        <input type="text"
+                                               class="form-input"
+                                               id="reportedSearch"
+                                               placeholder="Enter search term..."
+                                               required>
+                                    </div>
+                                    <div class="col-2">
+                                        <button type="submit" class="btn btn-primary" style="width: 100%;">
+                                            <i class="fas fa-search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                        <div id="reportedAccountsList">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Security Logs Section -->
+                    <div id="securityLogsSection" class="d-none">
+                        <form id="securityLogsFilters" class="mb-4">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <label class="form-label">Severity</label>
+                                    <select class="form-input" id="securitySeverityFilter">
+                                        <option value="">All Severities</option>
+                                        <option value="high">High</option>
+                                        <option value="medium">Medium</option>
+                                        <option value="low">Low</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Type</label>
+                                    <select class="form-input" id="securityTypeFilter">
+                                        <option value="">All Types</option>
+                                        <option value="rating_manipulation">Rating Manipulation</option>
+                                        <option value="bot_activity">Bot Activity</option>
+                                        <option value="spam">Spam</option>
+                                        <option value="match_rigging">Match Rigging</option>
+                                        <option value="impersonation_attempt">Impersonation</option>
+                                        <option value="account_anomaly">Account Anomaly</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">User ID</label>
+                                    <input type="text" class="form-input" id="securityUserIdFilter" placeholder="Enter user ID...">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="button" class="btn btn-primary" style="width: 100%;" onclick="loadSecurityLogs()">
+                                        <i class="fas fa-filter"></i> Filter
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        <div id="securityLogsList">
+                            <div class="spinner"></div>
+                        </div>
+                        
+                        <!-- Account Whitelist Section in Security Tab -->
+                        <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid var(--border-color);">
+                            <h4 style="margin-bottom: 1rem;"><i class="fas fa-check-circle"></i> Security Report Whitelist</h4>
+                            <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 1rem;">Whitelisted accounts will never receive automated security reports.</p>
+                            <div class="row">
+                                <div class="col-md-10">
+                                    <input type="text" class="form-input" id="whitelistUserInput" placeholder="Enter user ID or email...">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-success" style="width: 100%;" onclick="addToWhitelist()">
+                                        <i class="fas fa-plus"></i> Whitelist
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="securityWhitelistList" style="margin-top: 1rem;">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- No Show Reports Section -->
+                    <div id="noshowReportsSection" class="d-none">
+                        <form id="noshowFilters" class="mb-4">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label">Player Username or Account</label>
+                                    <input type="text" class="form-input" id="noshowPlayerFilter" placeholder="Search by username or account...">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-input" id="noshowStatusFilter">
+                                        <option value="">All Status</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="resolved">Resolved</option>
+                                        <option value="dismissed">Dismissed</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="button" class="btn btn-primary" style="width: 100%;" onclick="loadNoshowReports()">
+                                        <i class="fas fa-search"></i> Search
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        <div id="noshowReportsList">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- User Reports Section -->
+                    <div id="userReportsSection" class="d-none">
+                        <form id="userReportsFilters" class="mb-4">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label class="form-label">Reported Player</label>
+                                    <input type="text" class="form-input" id="userReportsPlayerFilter" placeholder="Search...">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Category</label>
+                                    <select class="form-input" id="userReportsCategoryFilter">
+                                        <option value="">All Categories</option>
+                                        <option value="alt_account">Alt Account</option>
+                                        <option value="chat_abuse">Chat Abuse</option>
+                                        <option value="unfair_play">Unfair Play</option>
+                                        <option value="match_throwing">Match Throwing</option>
+                                        <option value="impersonation">Impersonation</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-input" id="userReportsStatusFilter">
+                                        <option value="">All Status</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="reviewed">Reviewed</option>
+                                        <option value="resolved">Resolved</option>
+                                        <option value="dismissed">Dismissed</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="button" class="btn btn-primary" style="width: 100%;" onclick="loadUserReports()">
+                                        <i class="fas fa-search"></i> Search
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        <div id="userReportsList">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+
+                    <!-- Message Reports Section -->
+                    <div id="messageReportsSection" class="d-none">
+                        <form id="messageReportsFilters" class="mb-4">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <label class="form-label">Reported Player / Reporter</label>
+                                    <input type="text" class="form-input" id="messageReportsPlayerFilter" placeholder="Search...">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Status</label>
+                                    <select class="form-input" id="messageReportsStatusFilter">
+                                        <option value="">All Status</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="reviewed">Reviewed</option>
+                                        <option value="resolved">Resolved</option>
+                                        <option value="dismissed">Dismissed</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">&nbsp;</label>
+                                    <button type="button" class="btn btn-primary" style="width: 100%;" onclick="loadMessageReports()">
+                                        <i class="fas fa-search"></i> Search
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                        <div id="messageReportsList">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="supportTab" class="tab-content d-none">
+            <div class="row">
+                <div class="col-12 col-lg-4">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h2 class="card-title"><i class="fas fa-life-ring"></i> Support Queue</h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label class="form-label" for="supportStatusFilter">Status</label>
+                                <select class="form-input" id="supportStatusFilter" onchange="loadSupportTickets()">
+                                    <option value="active">Active</option>
+                                    <option value="open">Open</option>
+                                    <option value="awaiting_admin">Awaiting Admin</option>
+                                    <option value="awaiting_user">Awaiting User</option>
+                                    <option value="resolved">Resolved</option>
+                                    <option value="closed">Closed</option>
+                                </select>
+                            </div>
+                            <div id="supportTicketsList">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-lg-8">
+                    <div id="supportTicketDetail">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="empty-state">
+                                    <i class="fas fa-inbox empty-state-icon"></i>
+                                    <p class="empty-state-title">No support ticket selected</p>
+                                    <p class="empty-state-desc">Pick a request from the queue to review the form details and reply.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ban Waves Tab -->
+        <div id="ban-wavesTab" class="tab-content d-none">
+            <!-- Create/Edit Ban Wave -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-wave-square"></i> Create/Edit Ban Wave
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form id="banWaveForm" onsubmit="handleSaveBanWave(event)">
+                        <input type="hidden" id="banWaveId" value="">
+                        <div class="row">
+                            <div class="col-12 col-md-6 mb-3">
+                                <label class="form-label" for="banWaveName">Ban Wave Name *</label>
+                                <input type="text" class="form-input" id="banWaveName" placeholder="e.g., Alt Detection Wave #1" required maxlength="100">
+                            </div>
+                            <div class="col-12 col-md-6 mb-3">
+                                <label class="form-label" for="banWaveStatus">Status</label>
+                                <select class="form-input" id="banWaveStatus">
+                                    <option value="pending">Pending</option>
+                                    <option value="active">Active</option>
+                                    <option value="completed">Completed</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label" for="banWaveDescription">Description</label>
+                            <textarea class="form-textarea" id="banWaveDescription" placeholder="Reason for this ban wave..." style="min-height: 80px;"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 col-md-6 mb-3">
+                                <label class="form-label">Accounts to Ban</label>
+                                <div id="banWaveAccountsList" class="ban-wave-list"></div>
+                                <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                                    <input type="text" class="form-input" id="banWaveAccountInput" placeholder="Email or Firebase UID..." style="flex:1;">
+                                    <button type="button" class="btn btn-secondary" onclick="addBanWaveAccount()">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-12 col-md-6 mb-3">
+                                <label class="form-label" for="banWaveDuration">Default Ban Duration</label>
+                                <select class="form-input" id="banWaveDuration">
+                                    <option value="permanent">Permanent</option>
+                                    <option value="7d">7 Days</option>
+                                    <option value="30d">30 Days</option>
+                                    <option value="90d">90 Days</option>
+                                    <option value="365d">1 Year</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top: 1rem;">
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Ban Wave</button>
+                            <button type="button" class="btn btn-secondary" onclick="resetBanWaveForm()"><i class="fas fa-undo"></i> Reset</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Ban Waves List -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-list"></i> Ban Waves List
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div id="banWavesList">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Execute Ban Wave -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-gavel"></i> Execute Ban Wave
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger mb-4">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Warning:</strong> Executing a ban wave will permanently ban all Firebase accounts and blacklist all Minecraft usernames. This action cannot be undone.
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="executeBanWaveSelect">Select Ban Wave to Execute</label>
+                        <select class="form-input" id="executeBanWaveSelect">
+                            <option value="">Choose a ban wave...</option>
+                        </select>
+                    </div>
+                    <div id="executeBanWavePreview" class="alert alert-info" style="display:none; margin-top:1rem;">
+                        <strong>Preview:</strong>
+                        <div id="executeBanWavePreviewContent"></div>
+                    </div>
+                    <button type="button" class="btn btn-danger btn-lg" onclick="executeBanWave()" style="margin-top:1rem;">
+                        <i class="fas fa-gavel"></i> Execute Ban Wave
+                    </button>
+                    <div id="executeBanWaveResults" style="display:none; margin-top:2rem;">
+                        <h4>Execution Results</h4>
+                        <div id="executeBanWaveResultsContent"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-shield-alt"></i> Alt Detection Whitelist
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <form id="whitelistForm" onsubmit="handleAddToWhitelist(event)" class="mb-4">
+                        <div class="form-group">
+                            <label class="form-label" for="whitelistIdentifier">Email or Firebase UID</label>
+                            <div class="row">
+                                <div class="col-10">
+                                    <input type="text"
+                                           class="form-input"
+                                           id="whitelistIdentifier"
+                                           placeholder="Enter email or Firebase UID..."
+                                           required>
+                                </div>
+                                <div class="col-2">
+                                    <button type="submit" class="btn btn-success" style="width: 100%;">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="whitelistList">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Testing Tools Tab -->
+        <div id="testingTab" class="tab-content d-none">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-flask"></i> Testing Tools
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Testing Tools:</strong> Test rank-up animations and other system features.
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h4>Rank-Up Animation Test</h4>
+                            <p>Test the rank-up animation that plays when a player achieves a new title.</p>
+
+                            <div class="mb-3">
+                                <label for="testTitleSelect" class="form-label">Select Title to Test</label>
+                                <select class="form-input" id="testTitleSelect">
+                                    <option value="">Select a title...</option>
+                                    <option value="Combat Novice">Combat Novice (500+ rating)</option>
+                                    <option value="Combat Cadet">Combat Cadet (700+ rating)</option>
+                                    <option value="Combat Specialist">Combat Specialist (1000+ rating)</option>
+                                    <option value="Combat Ace">Combat Ace (1500+ rating)</option>
+                                    <option value="Combat Master">Combat Master (2000+ rating)</option>
+                                    <option value="Combat Grandmaster">Combat Grandmaster (2500+ rating)</option>
+                                </select>
+                            </div>
+
+                            <button type="button" class="btn btn-primary" onclick="testRankUpAnimation()">
+                                <i class="fas fa-play"></i> Test Rank-Up Animation
+                            </button>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h4>System Status</h4>
+                            <div id="systemStatus">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manual Ratings Tab -->
+        <div id="ratingsTab" class="tab-content d-none">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-chart-line"></i> Manual Rating Updates
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Info:</strong> Manually update player ratings using Glicko-2 rating system. Enter two player usernames and their match scores.
+                    </div>
+
+                    <form id="manualRatingForm">
+                        <div class="row mb-3">
+                            <div class="col-md-3">
+                                <label for="player1Username" class="form-label">Player 1 Username</label>
+                                <input type="text" class="form-input" id="player1Username" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="player1Score" class="form-label">Player 1 Score</label>
+                                <input type="number" class="form-input" id="player1Score" min="0" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="player2Username" class="form-label">Player 2 Username</label>
+                                <input type="text" class="form-input" id="player2Username" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="player2Score" class="form-label">Player 2 Score</label>
+                                <input type="number" class="form-input" id="player2Score" min="0" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="gamemode" class="form-label">Gamemode</label>
+                                <select class="form-input" id="gamemode" required>
+                                    <option value="">Select Gamemode...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">&nbsp;</label>
+                                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                                    <i class="fas fa-calculator"></i> Update Ratings
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div id="ratingUpdateResult" class="mt-4" style="display: none;">
+                        <h4>Rating Update Results</h4>
+                        <div id="ratingUpdateContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audit Log Tab -->
+        <div id="auditTab" class="tab-content d-none">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-history"></i> Admin Audit Log
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-shield-alt"></i>
+                        <strong>Security Notice:</strong> This audit log contains all admin actions and cannot be modified or deleted.
+                    </div>
+
+                    <!-- Filters -->
+                    <form id="auditLogFilters" class="mb-4">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <label class="form-label">Action Type</label>
+                                <select class="form-input" id="auditActionFilter">
+                                    <option value="">All Actions</option>
+                                    <option value="BAN_USER">Ban User</option>
+                                    <option value="UNBAN_USER">Unban User</option>
+                                    <option value="WARN_USER">Warn User</option>
+                                    <option value="UPDATE_RATING">Update Rating</option>
+                                    <option value="UPDATE_ROLES">Update Roles</option>
+                                    <option value="SET_ADMIN_STATUS">Set Admin Status</option>
+                                    <option value="SET_TESTER_STATUS">Set Tester Status</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Admin UID</label>
+                                <input type="text" class="form-input" id="auditAdminFilter" placeholder="Admin Firebase UID">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Target User ID</label>
+                                <input type="text" class="form-input" id="auditTargetFilter" placeholder="Target User/Player ID">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Date Range</label>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <input type="date" class="form-input" id="auditStartDate">
+                                    </div>
+                                    <div class="col-6">
+                                        <input type="date" class="form-input" id="auditEndDate">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button type="button" class="btn btn-primary" onclick="if (typeof loadAuditLog === 'function') { loadAuditLog(); } else { alert('Please wait for the page to load completely.'); }">
+                                <i class="fas fa-search"></i> Filter & Load
+                            </button>
+                            <button type="button" class="btn btn-secondary" onclick="if (typeof clearAuditFilters === 'function') { clearAuditFilters(); } else { alert('Please wait for the page to load completely.'); }">
+                                <i class="fas fa-times"></i> Clear Filters
+                            </button>
+                        </div>
+                    </form>
+
+                    <!-- Results -->
+                    <div id="auditLogResults">
+                        <div class="empty-state">
+                            <p class="text-muted">Use the filters above to load audit log entries</p>
+                        </div>
+                    </div>
+
+                    <!-- Load More -->
+                    <div id="auditLoadMore" class="text-center mt-4" style="display: none;">
+                        <button class="btn btn-outline-primary" onclick="loadMoreAuditLog()">
+                            <i class="fas fa-plus"></i> Load More
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Whitelisted Servers Tab -->
+        <div id="serversTab" class="tab-content d-none">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-server"></i> Whitelisted Servers
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle"></i>
+                        Manage servers where players can verify their Minecraft accounts. These servers will appear in the onboarding process and queue server selection.
+                    </div>
+
+                    <!-- Add Server Form -->
+                    <form id="addServerForm" onsubmit="handleAddServer(event)" class="mb-4">
+                        <h3 style="font-size: 1.2rem; margin-bottom: 1rem;">Add New Server</h3>
+                        <div class="row">
+                            <div class="col-12 col-md-5">
+                                <label class="form-label">Server Name</label>
+                                <input type="text" 
+                                       class="form-input" 
+                                       id="serverName" 
+                                       placeholder="e.g., Main SMP Server"
+                                       required>
+                            </div>
+                            <div class="col-12 col-md-5">
+                                <label class="form-label">Server IP/Domain</label>
+                                <input type="text" 
+                                       class="form-input" 
+                                       id="serverIp" 
+                                       placeholder="e.g., mc.example.com"
+                                       required>
+                            </div>
+                            <div class="col-12 col-md-2 d-flex align-items-end">
+                                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                                    <i class="fas fa-plus"></i> Add
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- Servers List -->
+                    <h3 style="font-size: 1.2rem; margin-bottom: 1rem; margin-top: 2rem;">Current Servers</h3>
+                    <div id="whitelistedServersList">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Matches Section -->
+        <!-- Security Scores Tab -->
+        <div id="security-scoresTab" class="tab-content d-none">
+            <div class="card main-card">
+                <div class="card-body">
+                    <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap; margin-bottom:1.25rem;">
+                        <h2 style="margin:0;"><i class="fas fa-shield-alt"></i> Security Scores</h2>
+                        <div id="securityTopScore" style="display:none;"></div>
+                    </div>
+                    <p class="text-muted" style="margin-bottom:1.25rem;">Players are ranked by fraud/rigging risk. Scores are recomputed after every match finalization. Highest scores appear first.</p>
+
+                    <!-- Filters -->
+                    <div class="row mb-3" style="gap:0.5rem;">
+                        <div class="col-12 col-md-3">
+                            <select id="securityRiskFilter" class="form-control" onchange="loadSecurityScores()">
+                                <option value="">All Risk Levels</option>
+                                <option value="critical">Critical</option>
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
+                                <option value="clean">Clean</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-2">
+                            <button class="btn btn-primary" onclick="loadSecurityScores()" style="width:100%;">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="securityScoresList"><div class="spinner"></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="matchesTab" class="tab-content d-none">
+            <div class="card main-card">
+                <div class="card-body">
+                    <h2><i class="fas fa-gamepad"></i> Matches Management</h2>
+                    <p>View, finalize, and manage active and completed matches.</p>
+
+                    <!-- Filter Controls -->
+                    <div class="row mb-4" style="gap: 0.5rem;">
+                        <div class="col-12 col-md-3">
+                            <select id="matchStatusFilter" class="form-control" onchange="loadMatches()">
+                                <option value="">All Statuses</option>
+                                <option value="active">Active</option>
+                                <option value="ended">Ended</option>
+                                <option value="finalized">Finalized</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <select id="matchGamemodeFilter" class="form-control" onchange="loadMatches()">
+                                <option value="">All Gamemodes</option>
+                                <option value="vanilla">Vanilla</option>
+                                <option value="uhc">UHC</option>
+                                <option value="pot">Pot</option>
+                                <option value="nethop">NethOP</option>
+                                <option value="smp">SMP</option>
+                                <option value="sword">Sword</option>
+                                <option value="axe">Axe</option>
+                                <option value="mace">Mace</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <input type="text" class="form-control" id="matchSearchInput" placeholder="Search player..." onkeyup="loadMatches()">
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <button class="btn btn-primary" onclick="loadMatches()" style="width: 100%;">
+                                <i class="fas fa-search"></i> Search
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Matches List -->
+                    <div id="matchesList">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="operationsTab" class="tab-content d-none">
+            <div class="admin-ops-grid">
+                <div class="card main-card">
+                    <div class="card-body">
+                        <h2><i class="fas fa-stream"></i> Match Timeline</h2>
+                        <p class="text-muted">Review queue join timing, assignment reason, page joins, start, finalize, revert, disputes, and admin interventions for a match.</p>
+                        <div class="row mb-3" style="gap: 0.5rem;">
+                            <div class="col-12 col-md-8">
+                                <input type="text" class="form-control" id="timelineMatchIdInput" placeholder="Enter match ID">
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <button class="btn btn-primary" onclick="loadMatchTimeline()" style="width:100%;">
+                                    <i class="fas fa-search"></i> Load Timeline
+                                </button>
+                            </div>
+                        </div>
+                        <div id="matchTimelineResults" class="admin-tool-result">
+                            <div class="empty-state"><p class="text-muted">Enter a match ID to inspect its timeline.</p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card main-card">
+                    <div class="card-body">
+                        <h2><i class="fas fa-project-diagram"></i> Queue Inspector</h2>
+                        <p class="text-muted">Preview why two queued users can or cannot match, including cooldown, role eligibility, retired gamemodes, and region overlap.</p>
+                        <div class="row mb-3" style="gap: 0.5rem;">
+                            <div class="col-12 col-md-5">
+                                <input type="text" class="form-control" id="queueInspectorLeftUserId" placeholder="First user UID">
+                            </div>
+                            <div class="col-12 col-md-5">
+                                <input type="text" class="form-control" id="queueInspectorRightUserId" placeholder="Second user UID">
+                            </div>
+                            <div class="col-12 col-md-2">
+                                <button class="btn btn-primary" onclick="runQueueInspector()" style="width:100%;">
+                                    <i class="fas fa-bolt"></i> Inspect
+                                </button>
+                            </div>
+                        </div>
+                        <div id="queueInspectorResults" class="admin-tool-result">
+                            <div class="empty-state"><p class="text-muted">Enter two queued user IDs to inspect compatibility.</p></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card main-card">
+                    <div class="card-body">
+                        <h2><i class="fas fa-balance-scale"></i> Match Disputes</h2>
+                        <p class="text-muted">Track participant disputes, review evidence links, and record resolution history tied to the match.</p>
+                        <div class="row mb-3" style="gap: 0.5rem;">
+                            <div class="col-12 col-md-3">
+                                <select id="disputeStatusFilter" class="form-control" onchange="loadAdminDisputes()">
+                                    <option value="">All Statuses</option>
+                                    <option value="open">Open</option>
+                                    <option value="in_review">In Review</option>
+                                    <option value="resolved">Resolved</option>
+                                    <option value="rejected">Rejected</option>
+                                </select>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <input type="text" class="form-control" id="disputeMatchFilter" placeholder="Filter by match ID">
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <input type="text" class="form-control" id="disputeUserFilter" placeholder="Filter by user UID">
+                            </div>
+                            <div class="col-12 col-md-2">
+                                <button class="btn btn-primary" onclick="loadAdminDisputes()" style="width:100%;">
+                                    <i class="fas fa-search"></i> Load
+                                </button>
+                            </div>
+                        </div>
+                        <div id="adminDisputesList" class="admin-tool-result">
+                            <div class="empty-state"><p class="text-muted">Disputes will appear here.</p></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resolve Tab -->
+        <div id="resolveTab" class="tab-content d-none">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title"><i class="fas fa-scale-balanced"></i> Resolve Match Violation</h2>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted" style="margin-bottom:1rem;">Revert rating changes from a match where a player violated policies. The offending player will be blacklisted and both players will receive inbox notices.</p>
+                    <form id="resolveForm" onsubmit="handleResolveViolation(event)">
+                        <div class="row mb-3">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="resolveUsername">Offending Player Username *</label>
+                                <input type="text" class="form-input" id="resolveUsername" placeholder="e.g. CheatingPlayer123" required>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="resolveMatchId">Match ID *</label>
+                                <input type="text" class="form-input" id="resolveMatchId" placeholder="Match ID from the database" required>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="resolveReason">Reason *</label>
+                                <textarea class="form-textarea" id="resolveReason" placeholder="Describe the violation..." required style="min-height: 80px;"></textarea>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="resolveBlacklistType">Blacklist Duration</label>
+                                <select class="form-input" id="resolveBlacklistType">
+                                    <option value="permanent">Permanent</option>
+                                    <option value="168">7 Days</option>
+                                    <option value="336">14 Days</option>
+                                    <option value="720">30 Days</option>
+                                    <option value="2160">90 Days</option>
+                                    <option value="4320">180 Days</option>
+                                    <option value="8760">1 Year</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="resolveSubmitBtn">
+                            <i class="fas fa-gavel"></i> Resolve & Revert Ratings
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-clock-rotate-left"></i> Recent Resolutions</h3>
+                </div>
+                <div class="card-body" id="recentResolutionsList">
+                    <p class="text-muted">Resolution history will appear in the audit log.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Send Message Tab -->
+        <div id="send-messageTab" class="tab-content d-none">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title"><i class="fas fa-envelope"></i> Send Inbox Message</h2>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted" style="margin-bottom:1rem;">Send a direct message to a user's inbox. You can use templates or write a custom message.</p>
+                    <form id="sendMessageForm" onsubmit="handleAdminSendMessage(event)">
+                        <div class="row mb-3">
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="msgTargetUserId">Target User ID *</label>
+                                <input type="text" class="form-input" id="msgTargetUserId" placeholder="Firebase UID" required>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <label class="form-label" for="msgTemplate">Message Template</label>
+                                <select class="form-input" id="msgTemplate" onchange="applyMessageTemplate()">
+                                    <option value="">Custom Message</option>
+                                    <option value="welcome">Welcome Message</option>
+                                    <option value="policy_reminder">Policy Reminder</option>
+                                    <option value="account_review">Account Under Review</option>
+                                    <option value="restriction_lifted">Restriction Lifted</option>
+                                    <option value="rating_restored">Rating Restored</option>
+                                    <option value="thank_report">Thank You for Report</option>
+                                    <option value="tester_accepted">Tester Application Accepted</option>
+                                    <option value="tester_denied">Tester Application Denied</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label" for="msgTitle">Message Title *</label>
+                            <input type="text" class="form-input" id="msgTitle" placeholder="Message subject" required maxlength="120">
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label" for="msgBody">Message Body *</label>
+                            <textarea class="form-textarea" id="msgBody" placeholder="Write message content here..." required style="min-height: 150px;"></textarea>
+                        </div>
+                        <div class="form-group mb-3">
+                            <label class="form-label" for="msgType">Message Category</label>
+                            <select class="form-input" id="msgType">
+                                <option value="admin_message">Admin Message</option>
+                                <option value="admin_notice">Admin Notice</option>
+                                <option value="system">System</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="sendMsgBtn">
+                            <i class="fas fa-paper-plane"></i> Send Message
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Punish Tab -->
+        <div id="punishTab" class="tab-content d-none">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title"><i class="fas fa-skull-crossbones"></i> Bulk Punish Accounts</h2>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted" style="margin-bottom:1.5rem;">Add Minecraft usernames or Firebase UIDs to punish. You can choose to ban Firebase accounts, blacklist usernames, revert matches, and send notifications.</p>
+
+                    <div class="form-group mb-3">
+                        <label class="form-label">Usernames & Firebase UIDs</label>
+                        <div id="punishUsernameList" class="punish-username-list"></div>
+                        <div style="display:flex; gap:0.5rem; margin-top:0.5rem;">
+                            <input type="text" class="form-input" id="punishUsernameInput" placeholder="Enter Minecraft username or Firebase UID..." style="flex:1;">
+                            <button type="button" class="btn btn-secondary" onclick="addPunishUsername()">
+                                <i class="fas fa-plus"></i> Add
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="punishReason">Reason *</label>
+                            <textarea class="form-textarea" id="punishReason" placeholder="Describe the reason for punishment..." required style="min-height: 80px;"></textarea>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="punishDuration">Ban Duration</label>
+                            <select class="form-input" id="punishDuration">
+                                <option value="permanent">Permanent</option>
+                                <option value="168">7 Days</option>
+                                <option value="336">14 Days</option>
+                                <option value="720">30 Days</option>
+                                <option value="2160">90 Days</option>
+                                <option value="4320">180 Days</option>
+                                <option value="8760">1 Year</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-12 col-md-4">
+                            <label class="punish-checkbox-label">
+                                <input type="checkbox" id="punishBanFirebase" checked>
+                                <span><i class="fas fa-ban"></i> Ban Firebase Accounts</span>
+                            </label>
+                            <small class="text-muted">Actually bans their Firebase auth accounts</small>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="punish-checkbox-label">
+                                <input type="checkbox" id="punishBlacklistUsernames" checked>
+                                <span><i class="fas fa-ban"></i> Blacklist Usernames</span>
+                            </label>
+                            <small class="text-muted">Prevents them from joining via those names</small>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="punish-checkbox-label">
+                                <input type="checkbox" id="punishRevertMatches" checked>
+                                <span><i class="fas fa-undo"></i> Revert Matches</span>
+                            </label>
+                            <small class="text-muted">Revert all finalized matches</small>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label class="punish-checkbox-label">
+                            <input type="checkbox" id="punishNotifyOpponents" checked>
+                            <span><i class="fas fa-envelope"></i> Notify Opponents</span>
+                        </label>
+                        <small class="text-muted">Send messages to all affected players</small>
+                    </div>
+
+                    <div id="punishPreview" class="alert alert-info" style="display:none;">
+                        <h4><i class="fas fa-list-check"></i> Action Preview</h4>
+                        <div id="punishPreviewContent"></div>
+                    </div>
+
+                    <button type="button" class="btn btn-danger btn-lg" onclick="executePunishment()" id="punishExecuteBtn" disabled>
+                        <i class="fas fa-gavel"></i> Execute Punishment
+                    </button>
+
+                    <div id="punishResults" class="mt-4" style="display:none;">
+                        <h4><i class="fas fa-clipboard-check"></i> Execution Results</h4>
+                        <div id="punishResultsContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="footer-logo">
+                <span>MC Leaderboards</span>
+            </div>
+            <div class="footer-links">
+                <a href="rules.html">Rules</a>
+                <a href="/privacy-policy.html">Privacy Policy</a>
+                <a href="/terms-of-service.html">Terms of Service</a>
+                <a href="support.html">Support</a>
+                <a href="blacklisted.html">Blacklisted</a>
+            </div>
+            <p class="footer-copyright">MC Leaderboards &copy; 2025. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <style>
+        .management-section {
+            margin-top: 2rem;
+        }
+
+        .management-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--card-bg);
+            border-radius: 8px 8px 0 0;
+        }
+
+        .management-section-header h2 {
+            margin: 0;
+            color: var(--text-color);
+        }
+
+        .management-section-body {
+            padding: 2rem;
+            background: var(--card-bg);
+            border-radius: 0 0 8px 8px;
+        }
+
+        .management-action-selector {
+            overflow: visible;
+        }
+
+        .management-action-selector h3 {
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 1rem;
+            width: 100%;
+            max-width: 100%;
+        }
+        
+        @media (max-width: 768px) {
+            .action-grid {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+        }
+
+        .action-card {
+            background: var(--bg-color);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .action-card:hover {
+            border-color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+        }
+
+        .action-card.selected {
+            border-color: var(--primary-color);
+            background: rgba(52, 152, 219, 0.1);
+        }
+
+        .action-card-icon {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary-color);
+        }
+
+        .action-card-title {
+            font-weight: 600;
+            color: var(--text-color);
+            margin-bottom: 0.25rem;
+            word-wrap: break-word;
+            width: 100%;
+        }
+
+        .action-card-desc {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            word-wrap: break-word;
+            width: 100%;
+        }
+
+        .management-form-container {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .management-form-container h3 {
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+        }
+
+        .management-form-actions {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .punish-username-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            min-height: 40px;
+            padding: 0.5rem;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .punish-username-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.35rem 0.75rem;
+            background: rgba(220,53,69,0.15);
+            border: 1px solid rgba(220,53,69,0.3);
+            border-radius: 2rem;
+            font-size: 0.9rem;
+            color: #ff6b6b;
+            font-weight: 500;
+        }
+
+        .punish-username-chip button {
+            background: none;
+            border: none;
+            color: #ff6b6b;
+            cursor: pointer;
+            padding: 0;
+            font-size: 1rem;
+            line-height: 1;
+            opacity: 0.7;
+        }
+
+        .punish-username-chip button:hover {
+            opacity: 1;
+        }
+
+        .punish-checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
+        .punish-checkbox-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #dc3545;
+        }
+
+        .punish-preview {
+            background: rgba(220,53,69,0.08);
+            border: 1px solid rgba(220,53,69,0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .punish-preview h4 {
+            color: #ff6b6b;
+            margin: 0 0 0.75rem 0;
+        }
+    </style>
+
+    <!-- Scripts -->
+    <script src="js/config.js" defer></script>
+    <script src="js/dev-mode-toggle.js" defer></script>
+    <script src="js/utils.js" defer></script>
+    <script src="js/firebase-service.js" defer></script>
+    <script src="js/app-state.js" defer></script>
+    <script src="js/api-service.js?v=20260128" defer></script>
+    <script src="js/global-error-handler.js" defer></script>
+    <script src="js/player-search.js" defer></script>
+    <script src="js/firebase-auth-service.js" defer></script>
+    <script src="js/auth-guard.js" defer></script>
+    <script src="js/navigation.js" defer></script>
+    <script src="js/ui-enhancements.js" defer></script>
+    <script src="js/testing.js" defer></script>
+    <script src="js/admin.js?v=20260128" defer></script>
+    <script>
+        // Verify authentication and admin status BEFORE anything else
+        // Wait for deferred scripts to load
+        window.addEventListener('DOMContentLoaded', async function() {
+            // Wait for requireAuth to be available
+            const waitForAuth = () => {
+                return new Promise((resolve) => {
+                    if (typeof requireAuth === 'function') {
+                        resolve();
+                    } else {
+                        const checkInterval = setInterval(() => {
+                            if (typeof requireAuth === 'function') {
+                                clearInterval(checkInterval);
+                                resolve();
+                            }
+                        }, 50);
+                    }
+                });
+            };
+
+            await waitForAuth();
+            const authenticated = await requireAuth(false, false);
+            if (!authenticated) return; // Redirected to login or dashboard
+
+            // Initialize admin panel after authentication
+            if (typeof initAdmin === 'function') {
+                initAdmin();
+            }
+
+            // Ensure all admin functions are available
+            const checkFunctions = () => {
+                const requiredFunctions = [
+                    'switchTab',
+                    'warnPlayer',
+                    'toggleTierTester',
+                    'toggleAdmin',
+                    'loadAuditLog',
+                    'clearAuditFilters'
+                ];
+                const missing = requiredFunctions.filter(fn => typeof window[fn] !== 'function');
+                if (missing.length > 0) {
+                    console.warn('Some admin functions not yet loaded:', missing);
+                    // Disable forms until functions are loaded
+                    const warnBtn = document.getElementById('warnSubmitBtn');
+                    const auditLoadBtn = document.querySelector('button[onclick*="loadAuditLog"]');
+                    const auditClearBtn = document.querySelector('button[onclick*="clearAuditFilters"]');
+
+                    if (warnBtn) {
+                        warnBtn.disabled = true;
+                        warnBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+                    }
+                    if (auditLoadBtn) {
+                        auditLoadBtn.disabled = true;
+                        auditLoadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+                    }
+                    if (auditClearBtn) {
+                        auditClearBtn.disabled = true;
+                    }
+                    setTimeout(checkFunctions, 100);
+                } else {
+                    console.log('All admin functions loaded successfully');
+                    // Enable forms
+                    const warnBtn = document.getElementById('warnSubmitBtn');
+                    const auditLoadBtn = document.querySelector('button[onclick*="loadAuditLog"]');
+                    const auditClearBtn = document.querySelector('button[onclick*="clearAuditFilters"]');
+
+                    if (warnBtn) {
+                        warnBtn.disabled = false;
+                        warnBtn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Issue Warning';
+                    }
+                    if (auditLoadBtn) {
+                        auditLoadBtn.disabled = false;
+                        auditLoadBtn.innerHTML = '<i class="fas fa-search"></i> Filter & Load';
+                    }
+                    if (auditClearBtn) {
+                        auditClearBtn.disabled = false;
+                    }
+                }
+            };
+            checkFunctions();
+        });
+    </script>
+</body>
+</html>

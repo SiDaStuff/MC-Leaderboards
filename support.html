@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Support - MC Leaderboards</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/support.css">
+    <link rel="stylesheet" href="assets/fonts/local-fonts.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/loading-overlay.js"></script>
+
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <nav class="navbar auth-simple-header">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+            </a>
+        </div>
+    </nav>
+
+    <main class="container support-simple-shell">
+        <section class="card auth-simple-card support-simple-card" id="supportRequestSection">
+            <div class="card-header">
+                <h1 class="auth-simple-title">Support</h1>
+                <p class="auth-simple-subtitle">Simple form for support, bugs, leaderboard issues, and player reports.</p>
+            </div>
+            <div class="card-body">
+                <div class="support-simple-note" id="supportSessionNote">Checking account status for autofill...</div>
+
+                <form id="supportRequestForm" class="support-simple-form">
+                    <div class="form-group">
+                        <label class="form-label" for="supportCategory">Category *</label>
+                        <select class="form-select" id="supportCategory" required>
+                            <option value="">Select an option...</option>
+                            <option value="player_report">Report a player</option>
+                            <option value="website_issue">Website issue</option>
+                            <option value="tiering_system_issue">Tiering system issue</option>
+                            <option value="leaderboard_problem">Leaderboard problem</option>
+                            <option value="account_issue">Account issue</option>
+                            <option value="bug_report">Report a bug</option>
+                            <option value="other">Other</option>
+                        </select>
+                        <p class="support-simple-help" id="supportCategoryHelp">Choose the category that best matches your issue.</p>
+                    </div>
+
+                    <div class="support-simple-summary" id="supportCategorySummary">
+                        <div class="support-simple-summary__icon" id="supportCategorySummaryIcon">
+                            <i class="fas fa-life-ring"></i>
+                        </div>
+                        <div>
+                            <strong id="supportCategorySummaryTitle">Pick a category to tailor the form</strong>
+                            <p id="supportCategorySummaryText">We will show the most helpful prompts for your report or support request here.</p>
+                        </div>
+                    </div>
+
+                    <div class="support-report-fields d-none" id="supportReportFields">
+                        <div class="alert alert-warning support-report-note" id="supportReportAuthNotice">
+                            <i class="fas fa-user-shield"></i>
+                            <span>Player reports require a signed-in account so staff can follow up with you and prevent abuse.</span>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="supportReportedPlayer">Reported Player *</label>
+                            <input type="text" class="form-input" id="supportReportedPlayer" maxlength="32" placeholder="PlayerName">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="supportMatchId">Match ID</label>
+                            <input type="text" class="form-input" id="supportMatchId" maxlength="120" placeholder="Optional match ID">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="supportReportCategory">Report Category *</label>
+                            <select class="form-select" id="supportReportCategory">
+                                <option value="unfair_play">Unfair play</option>
+                                <option value="chat_abuse">Chat abuse</option>
+                                <option value="match_throwing">Match throwing / rigging</option>
+                                <option value="impersonation">Impersonation</option>
+                                <option value="alt_account">Alt account</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="supportReportedUUID">Reported UUID</label>
+                            <input type="text" class="form-input" id="supportReportedUUID" maxlength="64" placeholder="Optional Minecraft UUID">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="supportEmail">Email Address *</label>
+                        <input type="email" class="form-input" id="supportEmail" maxlength="180" required autocomplete="email" placeholder="you@example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="supportMinecraftUsername">Minecraft Username</label>
+                        <input type="text" class="form-input" id="supportMinecraftUsername" maxlength="32" autocomplete="nickname" placeholder="PlayerName">
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="supportDescription" id="supportDescriptionLabel">Describe the issue *</label>
+                        <textarea class="form-textarea support-simple-textarea" id="supportDescription" rows="7" maxlength="4000" required placeholder="Please explain the issue or question in as much detail as possible."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="supportEvidenceLinks">Evidence Links</label>
+                        <textarea class="form-textarea" id="supportEvidenceLinks" rows="4" maxlength="2500" placeholder="Paste one URL per line."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="supportUrgency">Urgency *</label>
+                        <select class="form-select" id="supportUrgency" required>
+                            <option value="">Select urgency...</option>
+                            <option value="low">Low - General question</option>
+                            <option value="medium">Medium - Something is not working properly</option>
+                            <option value="high">High - Major issue affecting rankings or data</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="supportAnythingElse">Anything else?</label>
+                        <textarea class="form-textarea" id="supportAnythingElse" rows="4" maxlength="2000" placeholder="Extra context that could help staff resolve this faster."></textarea>
+                    </div>
+
+                    <label class="support-simple-check" for="supportRulesConfirmed">
+                        <input type="checkbox" id="supportRulesConfirmed" required>
+                        <span>I have read the <a href="rules.html">rules</a>.</span>
+                    </label>
+
+                    <div class="auth-simple-actions">
+                        <button class="btn btn-primary btn-block btn-lg" type="submit" id="supportSubmitBtn">
+                            <i class="fas fa-paper-plane"></i> Submit Support Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <section class="card auth-simple-card support-faq-card">
+            <div class="card-header">
+                <h2 class="auth-simple-title support-faq-title">FAQ</h2>
+                <p class="auth-simple-subtitle">A few quick answers.</p>
+            </div>
+            <div class="card-body">
+                <div class="faq-container">
+                    <div class="faq-item">
+                        <button class="faq-question" type="button" onclick="toggleFaq(this)">
+                            <i class="fas fa-chevron-right faq-icon"></i>
+                            <span>How do I link my Minecraft account?</span>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Go to your dashboard and complete onboarding. The site will guide you through the current linking flow.</p>
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-question" type="button" onclick="toggleFaq(this)">
+                            <i class="fas fa-chevron-right faq-icon"></i>
+                            <span>How do I apply for Tier Tester?</span>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Use the Tier Tester application flow on your dashboard when applications are open.</p>
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-question" type="button" onclick="toggleFaq(this)">
+                            <i class="fas fa-chevron-right faq-icon"></i>
+                            <span>What should I include in a player report?</span>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Include the player name, match ID if you have it, what happened, and any evidence links.</p>
+                        </div>
+                    </div>
+                    <div class="faq-item">
+                        <button class="faq-question" type="button" onclick="toggleFaq(this)">
+                            <i class="fas fa-chevron-right faq-icon"></i>
+                            <span>Can blacklisted users still send support tickets?</span>
+                        </button>
+                        <div class="faq-answer">
+                            <p>Yes. Blacklisted users can still use support unless a separate restriction blocks that feature.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/config.js"></script>
+    <script src="js/dev-mode-toggle.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/firebase-service.js"></script>
+    <script src="js/app-state.js"></script>
+    <script src="js/api-service.js"></script>
+    <script src="js/global-error-handler.js"></script>
+    <script src="js/player-search.js"></script>
+    <script src="js/realtime-service.js"></script>
+    <script src="js/firebase-auth-service.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/ui-enhancements.js"></script>
+    <script src="js/auth-ui.js"></script>
+    <script src="js/recaptcha-service.js"></script>
+    <script src="js/support-page.js"></script>
+</body>
+</html>

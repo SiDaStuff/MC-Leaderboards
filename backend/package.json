@@ -1,0 +1,43 @@
+{
+  "name": "mc-leaderboards-backend",
+  "version": "1.0.0",
+  "description": "Backend API server for MC Leaderboards",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "health-check": "node health-check.js",
+    "seed": "node scripts/seed-data.js",
+    "cleanup": "node scripts/cleanup-matches.js",
+    "backup": "node scripts/backup-database.js",
+    "restore": "node scripts/restore-database.js",
+    "migrate:firestore": "node scripts/migrate-rtdb-to-firestore.js"
+  },
+  "keywords": [
+    "minecraft",
+    "leaderboard",
+    "pvp"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "compression": "^1.8.1",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.0",
+    "express-slow-down": "^2.0.3",
+    "firebase-admin": "^13.4.0",
+    "helmet": "^8.1.0",
+    "morgan": "^1.10.0",
+    "redis": "^4.7.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
+  },
+  "overrides": {
+    "minimatch": ">=9.0.0",
+    "picomatch": ">=4.0.0",
+    "@tootallnate/once": ">=3.0.1",
+    "fast-xml-parser": "4.5.5"
+  }
+}

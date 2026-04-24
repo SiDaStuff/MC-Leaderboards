@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - MC Leaderboards</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+    
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="assets/fonts/local-fonts.css">
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/loading-overlay.js"></script>
+    
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+
+    <style>
+        .dashboard-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .status-card {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            transition: all 0.3s ease;
+        }
+
+        .status-card:hover {
+            border-color: var(--accent-color);
+            transform: translateY(-2px);
+        }
+
+        .status-card-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(92, 210, 169, 0.1);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: var(--accent-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .status-card-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-card-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-color);
+        }
+
+        .status-card-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: auto;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-active {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success-color);
+        }
+
+        .badge-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning-color);
+        }
+
+        .badge-critical {
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }
+
+        .badge-inactive {
+            background: rgba(107, 114, 128, 0.15);
+            color: var(--text-muted);
+        }
+
+        .section-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+
+        .card {
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 1.5rem;
+            background: var(--secondary-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-color);
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        .info-banner {
+            background: linear-gradient(135deg, rgba(59, 178, 138, 0.12), rgba(242, 201, 76, 0.08));
+            border: 2px solid rgba(59, 178, 138, 0.24);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .info-banner-icon {
+            flex-shrink: 0;
+            font-size: 1.25rem;
+            color: var(--accent-color);
+        }
+
+        .info-banner-text {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: var(--text-color);
+        }
+
+        .form-select,
+        .form-input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--primary-bg);
+            color: var(--text-color);
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-select:focus,
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 3px rgba(92, 210, 169, 0.1);
+        }
+
+        .form-help {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .gamemode-choice-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .gamemode-choice {
+            display: block;
+            cursor: pointer;
+        }
+
+        .gamemode-choice input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .gamemode-choice-content {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 0.7rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--primary-bg);
+            transition: all 0.2s ease;
+            min-height: 44px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .gamemode-choice input:checked + .gamemode-choice-content {
+            border-color: var(--accent-color);
+            background: rgba(92, 210, 169, 0.12);
+            box-shadow: 0 0 0 2px rgba(92, 210, 169, 0.15);
+        }
+
+        .gamemode-choice-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+
+        .tester-card-minimal .card-header {
+            background: var(--secondary-bg);
+            color: var(--text-color);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tester-card-minimal .card-title {
+            color: var(--text-color);
+        }
+
+        .tester-intro {
+            color: var(--text-muted);
+            margin-bottom: 0.8rem;
+            font-size: 0.95rem;
+        }
+
+        .tester-note {
+            background: var(--tertiary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0.8rem;
+            margin-bottom: 1rem;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .tester-note strong {
+            color: var(--text-color);
+        }
+
+        .tester-selection-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1rem;
+        }
+
+        .tester-region-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 0.5rem;
+        }
+
+        .tester-region-choice {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            padding: 0.55rem 0.6rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: var(--primary-bg);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .tester-controls {
+            border-top: 1px solid var(--border-color);
+            margin-top: 1rem;
+            padding-top: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #4ab897;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: var(--secondary-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #dc2626;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(92, 210, 169, 0.2);
+            border-radius: 50%;
+            border-top-color: var(--accent-color);
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .alert-info {
+            background: rgba(59, 178, 138, 0.1);
+            border: 1px solid rgba(59, 178, 138, 0.28);
+            color: var(--accent-color);
+        }
+
+        .alert-success {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: var(--success-color);
+        }
+
+        .alert-warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            color: var(--warning-color);
+        }
+
+        .alert-danger {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .col-6 {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .text-muted {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .mb-0 { margin-bottom: 0; }
+        .mb-1 { margin-bottom: 0.5rem; }
+        .mb-2 { margin-bottom: 1rem; }
+        .mb-3 { margin-bottom: 1.5rem; }
+        .mb-4 { margin-bottom: 2rem; }
+        .mt-2 { margin-top: 1rem; }
+        .mt-3 { margin-top: 1.5rem; }
+
+        .h5 {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .progress {
+            width: 100%;
+            height: 6px;
+            background: var(--secondary-bg);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: var(--accent-color);
+            animation: progress 2s ease;
+        }
+
+        @keyframes progress {
+            0% { width: 0; }
+        }
+
+        @media (max-width: 992px) {
+            .status-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .status-card {
+                flex-direction: row;
+                align-items: center;
+                gap: 1rem;
+            }
+
+            .status-card-value {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-content {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                margin-top: 1rem;
+                margin-bottom: 1rem;
+            }
+
+            .status-grid {
+                gap: 1rem;
+            }
+
+            .form-group {
+                margin-bottom: 0.75rem;
+            }
+
+            .btn {
+                padding: 0.65rem 1.25rem;
+                font-size: 0.95rem;
+            }
+
+            .tester-selection-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+                <span class="beta-badge">BETA</span>
+            </a>
+            <div class="navbar-search-wrapper">
+                <div class="navbar-search">
+                    <i class="fas fa-search navbar-search-icon"></i>
+                    <input type="text"
+                           class="navbar-search-input"
+                           id="searchInput"
+                           placeholder="Search player..."
+                           autocomplete="off">
+                </div>
+            </div>
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a href="index.html">Leaderboards</a></li>
+                <li><a href="dashboard.html" class="active">Dashboard</a></li>
+                <li><a href="account.html">Account</a></li>
+                <li><a href="#" id="navLogout" onclick="handleLogout()">Logout</a></li>
+            </ul>
+            <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container dashboard-content">
+        <!-- Page Header -->
+        <div class="page-header">
+            <h1 class="page-title">
+                <i class="fas fa-tachometer-alt" style="margin-right: 0.5rem; color: var(--accent-color);"></i>
+                Dashboard
+            </h1>
+            <p class="page-subtitle">Your central hub for competitive Minecraft PvP testing</p>
+        </div>
+
+        <!-- Status Cards Row -->
+        <div class="status-grid" id="statusCardsGrid">
+            <!-- Account Status Card -->
+            <div class="status-card">
+                <div class="status-card-icon">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="status-card-title">Account Status</div>
+                <div class="status-card-value" id="userStatusValue">-</div>
+                <div class="status-card-subtitle" id="userStatusSubtitle">Loading profile...</div>
+            </div>
+
+            <!-- Tier Tester Card -->
+            <div class="status-card" id="testerStatusCard">
+                <div class="status-card-icon">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="status-card-title" id="testerCardTitle">Tier Tester Status</div>
+                <div id="testerCardContent" style="margin-top: 0.75rem; font-size: 0.9rem;">
+                    <div class="status-card-subtitle">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Plus Subscription Card -->
+            <div class="status-card" id="plusStatusCard">
+                <div class="status-card-icon">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <div class="status-card-title" id="plusCardTitle">Plus Subscription</div>
+                <div id="plusCardContent" style="margin-top: 0.75rem; font-size: 0.9rem;">
+                    <div class="status-card-subtitle">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Queue Stats -->
+        <div class="section-grid">
+            <!-- Join Queue Card -->
+            <div class="card" id="sharedQueueCard">
+                <div class="card-header" style="background: var(--accent-color); color: white; border: none;">
+                    <h2 class="card-title" style="color: white;">
+                        <i class="fas fa-play-circle"></i> <span id="queueCardTitle">Join Shared Queue</span>
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <p id="queueCardSubtitle" style="color: var(--text-muted); margin-bottom: 1rem;">One shared queue for players and tier testers.</p>
+                    <div class="alert alert-info" style="margin-bottom: 1rem;">
+                        <i class="fas fa-route"></i>
+                        <div id="queueFlowMessage">
+                            <strong>Queue flow:</strong> Select one or more gamemodes and regions, choose a whitelisted server, then join queue.
+                        </div>
+                    </div>
+                    
+                    <form id="queueForm" onsubmit="handleJoinQueue(event)">
+                        <div class="tester-selection-grid">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-gamepad" style="color: var(--accent-color); margin-right: 0.5rem;"></i> Gamemodes
+                                </label>
+                                <div id="playerGamemodeSelections" class="gamemode-choice-grid"></div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="fas fa-globe-americas" style="color: var(--accent-color); margin-right: 0.5rem;"></i> Regions
+                                </label>
+                                <div id="playerRegionSelections" class="tester-region-grid"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="serverIP">
+                                <i class="fas fa-server" style="color: var(--accent-color); margin-right: 0.5rem;"></i> Server IP
+                            </label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="text" 
+                                       class="form-input" 
+                                       id="serverIP" 
+                                       required 
+                                       placeholder="play.example.com">
+                                <button type="button" 
+                                        class="btn btn-secondary" 
+                                        onclick="showServerSelectionPopup()"
+                                        style="white-space: nowrap;">
+                                    <i class="fas fa-list"></i> Browse
+                                </button>
+                            </div>
+                            <div class="form-help">
+                                <i class="fas fa-info-circle"></i>
+                                Enter a server IP or click "Browse" to choose from approved servers
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 1rem; font-size: 1.1rem;" id="joinQueueBtn">
+                            <i class="fas fa-play-circle"></i> Join Shared Queue
+                        </button>
+                        <div style="text-align: center; margin-top: 0.75rem; font-size: 0.9rem; color: var(--text-muted); display: flex; flex-direction: column; gap: 0.25rem; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-clock"></i> 
+                                <span>Average wait time: 2-5 minutes</span>
+                            </div>
+                        </div>
+                    </form>
+
+                    <div id="testerQueueOptions" style="display: none; margin-top: 1rem;">
+                        <div class="tester-note">
+                            <strong>Tier tester flow:</strong> you now use this same shared queue. Your account is queued with tester preference automatically.
+                        </div>
+                        <div class="form-group" style="margin-top: 1rem; margin-bottom: 0.5rem;">
+                            <label class="form-label" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+                                <span>Stay online after match</span>
+                                <span class="toggle-switch">
+                                    <input type="checkbox" id="stayInQueueAfterMatch">
+                                    <span class="toggle-slider"></span>
+                                </span>
+                            </label>
+                            <div class="form-help">Rejoin the shared queue automatically after each completed match.</div>
+                        </div>
+                    </div>
+
+                    <!-- Queue Cooldowns -->
+                    <div style="margin-top: 1rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-secondary btn-sm" id="loadQueueCooldownsBtn" onclick="loadQueueCooldownsOnDemand()" style="padding: 0.45rem 0.8rem; font-size: 0.85rem;">
+                            <i class="fas fa-rotate"></i> Refresh Cooldowns
+                        </button>
+                        <span class="text-muted" style="font-size: 0.85rem;">Loaded automatically on dashboard open</span>
+                    </div>
+                    <div id="queueCooldowns" style="margin-top: 1rem;"></div>
+
+                    <!-- Queue Status -->
+                    <div id="queueStatus" style="display: none; margin-top: 1rem;">
+                        <div class="alert alert-info">
+                            <div style="flex: 1;">
+                                <div style="font-weight: 600; margin-bottom: 0.5rem;" id="queueStatusText">Waiting for a compatible match</div>
+                                <div class="text-muted" id="queueWaitingTime">Just joined queue</div>
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-bottom: 1rem;">
+                            <div class="status-card" style="padding: 0.75rem;">
+                                <div class="text-muted">Gamemodes</div>
+                                <div class="h5 mb-0" id="queueGamemode">-</div>
+                            </div>
+                            <div class="status-card" style="padding: 0.75rem;">
+                                <div class="text-muted">Regions</div>
+                                <div class="h5 mb-0" id="queueRegion">-</div>
+                            </div>
+                            <div class="status-card" style="padding: 0.75rem;">
+                                <div class="text-muted">Players in Queue</div>
+                                <div class="h5 mb-0" id="queuePlayersCount">-</div>
+                            </div>
+                            <div class="status-card" style="padding: 0.75rem;">
+                                <div class="text-muted">Tier Testers in Queue</div>
+                                <div class="h5 mb-0" id="queueAvailableTesters">-</div>
+                            </div>
+                            <div class="status-card" style="padding: 0.75rem;">
+                                <div class="text-muted">Your Position</div>
+                                <div class="h5 mb-0" id="queuePosition">-</div>
+                            </div>
+                            <div class="status-card" style="padding: 0.75rem;">
+                                <div class="text-muted">Estimated Wait</div>
+                                <div class="h5 mb-0" id="queueEta">Calculating...</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-danger" style="width: 100%;" onclick="handleLeaveQueue()">
+                            <i class="fas fa-times"></i> Leave Queue
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Staff Actions -->
+            <div class="card" id="staffActionsCard" style="display: none;">
+                <div class="card-header" style="background: linear-gradient(135deg, #123126, #1e4b3b); color: white; border: none;">
+                    <h2 class="card-title" style="color: white;">
+                        <i class="fas fa-user-shield"></i> Staff Actions
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <p id="staffActionsIntro" class="text-muted" style="margin-bottom: 1rem;"></p>
+                    <div id="staffActionsGrid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 0.75rem;"></div>
+                </div>
+            </div>
+
+            <!-- Gamemode Activity Stats -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title" style="flex: 1;">
+                        <i class="fas fa-chart-bar"></i> Gamemode Activity
+                    </h2>
+                    <button type="button" class="btn btn-secondary btn-sm" id="loadGamemodeActivityBtn" onclick="loadGamemodeActivityOnDemand()" style="padding: 0.45rem 0.8rem; font-size: 0.85rem;">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                    <select class="form-select" id="regionFilter" style="width: auto; min-width: 150px;" onchange="handleRegionFilterChange()">
+                        <option value="">All Regions</option>
+                        <option value="NA">NA</option>
+                        <option value="EU">EU</option>
+                        <option value="AS">AS</option>
+                        <option value="SA">SA</option>
+                        <option value="AU">AU</option>
+                    </select>
+                    <small id="gamemodeStatsUpdated" class="text-muted" style="margin-left: 1rem;"></small>
+                </div>
+                <div class="card-body">
+                    <div id="gamemodeStatsList">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Matches -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-history"></i> Recent Matches
+                    </h2>
+                    <button type="button" class="btn btn-secondary btn-sm" id="loadRecentMatchesBtn" onclick="loadRecentMatchesOnDemand()" style="padding: 0.45rem 0.8rem; font-size: 0.85rem;">
+                        <i class="fas fa-download"></i> Load
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div id="recentMatchesContainer">
+                        <div class="text-muted">Click <strong>Load</strong> to fetch recent matches.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Match -->
+            <div class="card" id="activeMatchCard" style="display: none;">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <i class="fas fa-gamepad"></i> Active Match
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div id="activeMatchInfo"></div>
+                    <button class="btn btn-primary" style="width: 100%; margin-top: 1rem; padding: 1rem;" onclick="openTestingPage()">
+                        <i class="fas fa-external-link-alt"></i> Open Testing Page
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="footer-logo">
+                <span>MC Leaderboards</span>
+            </div>
+            <div class="footer-links">
+                <a href="rules.html">Rules</a>
+                <a href="/privacy-policy.html">Privacy Policy</a>
+                <a href="/terms-of-service.html">Terms of Service</a>
+                <a href="support.html">Support</a>
+                <a href="blacklisted.html">Blacklisted</a>
+            </div>
+            <p class="footer-copyright">MC Leaderboards &copy; 2025. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/config.js" defer></script>
+    <script src="js/dev-mode-toggle.js" defer></script>
+    <script src="js/utils.js" defer></script>
+    <script src="js/firebase-service.js" defer></script>
+    <script src="js/app-state.js" defer></script>
+    <script src="js/api-service.js" defer></script>
+    <script src="js/global-error-handler.js" defer></script>
+    <script src="js/player-search.js" defer></script>
+    <script src="js/realtime-service.js" defer></script>
+    <script src="js/firebase-auth-service.js" defer></script>
+    <script src="js/auth-guard.js" defer></script>
+    <script src="js/navigation.js" defer></script>
+    <script src="js/ui-enhancements.js" defer></script>
+    <script src="js/dashboard.js?v=20260309" defer></script>
+    <script src="js/dashboard-secondary.js" defer></script>
+    <script src="js/dashboard-page.js" defer></script>
+</body>
+</html>
+
+

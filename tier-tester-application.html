@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tier Tester Application - MC Leaderboards</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+    
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="assets/fonts/local-fonts.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/loading-overlay.js"></script>
+    
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+                <span class="beta-badge">BETA</span>
+            </a>
+            <div class="navbar-search-wrapper">
+                <div class="navbar-search">
+                    <i class="fas fa-search navbar-search-icon"></i>
+                    <input type="text"
+                           class="navbar-search-input"
+                           id="searchInput"
+                           placeholder="Search player..."
+                           autocomplete="off">
+                </div>
+            </div>
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a href="index.html">Leaderboards</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="account.html">Account</a></li>
+                <li><a href="#" id="navLogout" onclick="handleLogout()">Logout</a></li>
+            </ul>
+            <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="container" style="margin-top: 2rem; margin-bottom: 2rem;">
+        <div class="page-header">
+            <h1 class="page-title">Tier Tester Application</h1>
+            <p class="page-subtitle">Help us test new features and improve match quality</p>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <div style="display:flex; align-items:center; gap: 12px;">
+                    <img src="assets/badgeicons/tiertester.png" alt="Tier Tester" style="width:34px; height:34px; border-radius:10px; object-fit:contain; background:transparent;">
+                    <div>
+                        <h2 class="card-title" style="margin:0;">Apply to become a Tier Tester</h2>
+                        <div class="text-muted" style="margin-top: 2px;">Constructive feedback and professionalism required.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="tierTesterApplicationState"></div>
+
+                <form id="tierTesterApplicationForm" style="margin-top: 1rem;">
+                    <div class="form-group">
+                        <label class="form-label" for="applicantName">Your Name *</label>
+                        <input type="text" class="form-input" id="applicantName" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="applicantAge">Age *</label>
+                        <input type="number" class="form-input" id="applicantAge" min="13" max="100" required>
+                        <div class="form-help">You must be 13+ to apply.</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="minecraftExperience">Minecraft Experience *</label>
+                        <select class="form-select" id="minecraftExperience" required>
+                            <option value="">Select your experience level...</option>
+                            <option value="beginner">Beginner (Less than 6 months)</option>
+                            <option value="intermediate">Intermediate (6-24 months)</option>
+                            <option value="advanced">Advanced (2-5 years)</option>
+                            <option value="expert">Expert (5+ years)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="favoriteGamemode">Favorite Gamemode *</label>
+                        <select class="form-select" id="favoriteGamemode" required>
+                            <option value="">Select a gamemode...</option>
+                            <option value="vanilla">Vanilla</option>
+                            <option value="uhc">UHC</option>
+                            <option value="pot">Pot</option>
+                            <option value="nethop">NethOP</option>
+                            <option value="smp">SMP</option>
+                            <option value="sword">Sword</option>
+                            <option value="axe">Axe</option>
+                            <option value="mace">Mace</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="availability">Weekly Availability *</label>
+                        <select class="form-select" id="availability" required>
+                            <option value="">Select your availability...</option>
+                            <option value="daily">Daily (multiple hours)</option>
+                            <option value="frequent">Frequent (several times per week)</option>
+                            <option value="moderate">Moderate (a few times per week)</option>
+                            <option value="occasional">Occasional (when available)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="previousTesting">Previous Testing Experience</label>
+                        <textarea class="form-input" id="previousTesting" rows="3" placeholder="Optional: QA/testing, staff roles, feedback experience..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="whyTester">Why do you want to be a Tier Tester? *</label>
+                        <textarea class="form-input" id="whyTester" rows="4" required placeholder="What you'll contribute, how you give feedback, what excites you..."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="improvementIdeas">Improvement Ideas</label>
+                        <textarea class="form-input" id="improvementIdeas" rows="3" placeholder="Optional: ideas to improve testing, UI, matchmaking, etc."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">
+                            <input type="checkbox" id="termsAgreement" required style="margin-right: 8px;">
+                            I agree to provide constructive feedback and stay professional. *
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <p class="text-muted" style="text-align: center;">
+                            <i class="fas fa-shield-alt"></i> Verification will be required when you submit
+                        </p>
+                    </div>
+
+                    <div class="form-group">
+                        <button type="submit" class="btn btn-primary" style="width: 100%;" id="submitTierTesterBtn">
+                            <i class="fas fa-paper-plane"></i> Submit Application
+                        </button>
+                        <a href="dashboard.html" class="btn btn-secondary" style="width: 100%; margin-top: 10px;">
+                            <i class="fas fa-arrow-left"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="footer-logo">
+                <span>MC Leaderboards</span>
+            </div>
+            <div class="footer-links">
+                <a href="rules.html">Rules</a>
+                <a href="/privacy-policy.html">Privacy Policy</a>
+                <a href="/terms-of-service.html">Terms of Service</a>
+                <a href="support.html">Support</a>
+                <a href="blacklisted.html">Blacklisted</a>
+            </div>
+            <p class="footer-copyright">MC Leaderboards &copy; 2025. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/dev-mode-toggle.js"></script>
+    <script src="js/firebase-service.js"></script>
+    <script src="js/app-state.js"></script>
+    <script src="js/api-service.js"></script>
+    <script src="js/player-search.js"></script>
+    <script src="js/firebase-auth-service.js"></script>
+    <script src="js/auth-guard.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/ui-enhancements.js"></script>
+    <script src="js/tier-tester-application.js"></script>
+    <script>
+        // Verify authentication BEFORE anything else
+        // Wait for deferred scripts to load
+        window.addEventListener('DOMContentLoaded', async function() {
+            // Wait for Firebase to initialize first
+            const waitForFirebase = () => {
+                return new Promise((resolve) => {
+                    if (typeof waitForFirebaseInit === 'function') {
+                        waitForFirebaseInit().then(resolve);
+                    } else {
+                        const checkInterval = setInterval(() => {
+                            if (typeof waitForFirebaseInit === 'function') {
+                                clearInterval(checkInterval);
+                                waitForFirebaseInit().then(resolve);
+                            }
+                        }, 50);
+                    }
+                });
+            };
+
+            // Wait for requireAuth to be available
+            const waitForAuth = () => {
+                return new Promise((resolve) => {
+                    if (typeof requireAuth === 'function') {
+                        resolve();
+                    } else {
+                        const checkInterval = setInterval(() => {
+                            if (typeof requireAuth === 'function') {
+                                clearInterval(checkInterval);
+                                resolve();
+                            }
+                        }, 50);
+                    }
+                });
+            };
+
+            // Wait for Firebase to initialize
+            await waitForFirebase();
+            
+            // Then wait for auth guard
+            await waitForAuth();
+            
+            // Now authenticate
+            const authenticated = await requireAuth();
+            if (!authenticated) return;
+            if (typeof initTierTesterApplication === 'function') {
+                initTierTesterApplication();
+            }
+        });
+    </script>
+</body>
+</html>
+

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Settings - MC Leaderboards</title>
+    <link rel="icon" type="image/svg+xml" href="assets/vanilla.svg">
+    
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="js/loading-overlay.js"></script>
+
+    <link rel="stylesheet" href="css/account.css">
+
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11" defer></script>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container navbar-content">
+            <a href="index.html" class="navbar-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
+                <span class="beta-badge">BETA</span>
+            </a>
+            <div class="navbar-search-wrapper">
+                <div class="navbar-search">
+                    <i class="fas fa-search navbar-search-icon"></i>
+                    <input type="text"
+                           class="navbar-search-input"
+                           id="searchInput"
+                           placeholder="Search player..."
+                           autocomplete="off">
+                </div>
+            </div>
+            <ul class="navbar-nav" id="navbarNav">
+                <li><a href="index.html">Leaderboards</a></li>
+                <li><a href="dashboard.html">Dashboard</a></li>
+                <li><a href="account.html" class="active">Account</a></li>
+                <li><a href="#" id="navLogout" onclick="handleLogout()">Logout</a></li>
+            </ul>
+            <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container account-page-shell">
+        <!-- Page Header -->
+        <div class="page-header account-page-header">
+            <h1 class="page-title account-page-title">
+                <i class="fas fa-user-cog account-page-title-icon"></i>
+                Account Settings
+            </h1>
+            <p class="page-subtitle account-page-subtitle">Manage your profile, preferences, and account security</p>
+        </div>
+
+        <!-- Account Overview Section -->
+        <div class="account-overview" id="accountOverview">
+            <div class="account-avatar" id="accountInitials">MC</div>
+            <div class="account-info">
+                <h2 id="accountUsername">Loading...</h2>
+                <p id="accountEmail"></p>
+                <div class="account-badges" id="accountStatusBadges"></div>
+                <div class="account-role-actions" id="accountRoleActions" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Main Grid Layout -->
+        <div class="account-layout">
+            <!-- LEFT COLUMN: Status & Membership -->
+            <div>
+                <div class="status-card standing-section" id="standingSection">
+                    <div class="status-card-header">
+                        <div class="status-card-icon security">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="status-card-title">
+                            <h3>Standing</h3>
+                            <p class="status-card-subtitle">Your moderation health and account access</p>
+                        </div>
+                    </div>
+                    <div class="standing-head">
+                        <span id="standingLabel">All good!</span>
+                        <span id="standingScore">0%</span>
+                    </div>
+                    <div class="standing-track">
+                        <div class="standing-fill" id="standingFill"></div>
+                    </div>
+                    <div class="standing-levels" id="standingLevels">
+                        <span data-level="all-good">All good!</span>
+                        <span data-level="limited">Limited</span>
+                        <span data-level="very-limited">Very Limited</span>
+                        <span data-level="at-risk">At Risk</span>
+                        <span data-level="suspended">Suspended</span>
+                    </div>
+                    <div class="standing-history-list" id="standingHistoryList">
+                        <div class="standing-history-item">No moderation history found.</div>
+                    </div>
+                </div>
+
+                <!-- Tier Tester Card (Always Shown) -->
+                <div class="status-card" id="testerCard">
+                    <div class="status-card-header">
+                        <div class="status-card-icon tester">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="status-card-title">
+                            <h3>Tier Tester Status</h3>
+                            <p class="status-card-subtitle" id="testerSubtitle">Testing matches since joining</p>
+                        </div>
+                    </div>
+                    <div id="testerContent"></div>
+                </div>
+
+                <!-- Plus Subscription Card (Combined) -->
+                <div class="status-card plus-section account-section-spaced">
+                    <div class="status-card-header">
+                        <div class="status-card-icon plus">
+                            <i class="fas fa-crown"></i>
+                        </div>
+                        <div class="status-card-title">
+                            <h3>MC Leaderboards Plus</h3>
+                            <p class="status-card-subtitle" id="plusStatusSubtitle">Unlock premium features</p>
+                        </div>
+                    </div>
+                    <div id="plusContent"></div>
+                </div>
+
+                <!-- Account Status & Security -->
+                <div class="status-card account-section-spaced">
+                    <div class="status-card-header">
+                        <div class="status-card-icon security">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="status-card-title">
+                            <h3>Account Security</h3>
+                            <p class="status-card-subtitle">Manage your account access</p>
+                        </div>
+                    </div>
+                    <div class="card-form-group">
+                        <label class="card-form-label">Email Verification</label>
+                        <div id="emailVerificationStatus" class="account-status-text"></div>
+                        <button class="btn btn-primary btn-block account-button-tight" id="sendVerificationEmailBtn" onclick="handleSendVerificationEmail()">
+                            <i class="fas fa-envelope-open-text"></i> Send Verification Email
+                        </button>
+                        <p class="form-help-text">A verified email is required before onboarding can be completed.</p>
+                    </div>
+                    <div class="card-form-group account-divider">
+                        <label class="card-form-label">Connected Accounts</label>
+                        <div id="connectedAccountsStatus" class="account-status-text"></div>
+                        <button class="btn btn-secondary btn-block account-button-tight" id="linkGoogleBtn" onclick="handleLinkGoogleAccount()">
+                            <i class="fab fa-google"></i> Add Google Account
+                        </button>
+                        <p class="form-help-text">Link your Google account to enable "Sign in with Google"</p>
+                    </div>
+                    <div class="card-form-group account-divider">
+                        <div class="form-help-text account-helper-text">
+                            Email/password accounts must verify their email before sign-in and onboarding.
+                        </div>
+                    </div>
+                    <div class="account-divider">
+                        <button class="btn btn-secondary btn-block" onclick="handlePasswordReset()">
+                            <i class="fas fa-key"></i> Reset Password
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: Settings & Configuration -->
+            <div>
+                <!-- Minecraft Account -->
+                <div class="status-card">
+                    <div class="status-card-header">
+                        <div class="status-card-icon settings">
+                            <i class="fas fa-gamepad"></i>
+                        </div>
+                        <div class="status-card-title">
+                            <h3>Minecraft Account</h3>
+                            <p class="status-card-subtitle" id="minecraftStatusSubtitle">Link your game profile</p>
+                        </div>
+                    </div>
+                    <div id="minecraftSection"></div>
+                </div>
+
+                <!-- Region Settings -->
+                <div class="status-card account-section-spaced">
+                    <div class="status-card-header">
+                        <div class="status-card-icon settings">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div class="status-card-title">
+                            <h3>Gaming Region</h3>
+                            <p class="status-card-subtitle">For better matchmaking</p>
+                        </div>
+                    </div>
+                    <div class="card-form-group">
+                        <label class="card-form-label" for="accountRegion">Your Region</label>
+                        <select class="form-input" id="accountRegion">
+                            <option value="">Select region...</option>
+                            <option value="NA">North America</option>
+                            <option value="EU">Europe</option>
+                            <option value="AS">Asia</option>
+                            <option value="SA">South America</option>
+                            <option value="AU">Australia</option>
+                        </select>
+                        <p class="form-help-text">Helps match you with nearby testers for lower ping</p>
+                    </div>
+                    <button class="btn btn-primary btn-block account-button-spaced" onclick="handleUpdateRegion()">
+                        <i class="fas fa-save"></i> Save Region
+                    </button>
+                </div>
+
+            </div>
+
+            <!-- NEW SKILLS SECTION: Skill Levels & Gamemode Settings -->
+            <div class="section-title" id="skillConfigurationTitle">
+                <i class="fas fa-star-half-alt account-section-title-icon"></i>
+                Skill Configuration
+            </div>
+
+            <!-- Skill Levels Card -->
+            <div class="status-card" id="skillLevelsCard">
+                <div class="status-card-header">
+                    <div class="status-card-icon warning">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="status-card-title">
+                        <h3>Skill Levels</h3>
+                        <p class="status-card-subtitle">Set your starting Elo per gamemode (one-time only)</p>
+                    </div>
+                </div>
+                <div class="card-alert info">
+                    <i class="fas fa-info-circle"></i>
+                    <span><strong>One-Time Setup:</strong> Skill levels are locked once set to ensure fair matchmaking</span>
+                </div>
+                <div id="skillLevelsContainer"></div>
+                <button class="btn btn-primary btn-block account-button-spaced" id="saveSkillLevelsBtn">
+                    <i class="fas fa-save"></i> Save Skill Levels
+                </button>
+            </div>
+
+            <!-- Gamemode Retirement Card -->
+            <div class="status-card account-section-spaced" id="retirementCard">
+                <div class="status-card-header">
+                    <div class="status-card-icon muted">
+                        <i class="fas fa-user-slash"></i>
+                    </div>
+                    <div class="status-card-title">
+                        <h3>Gamemode Retirement</h3>
+                        <p class="status-card-subtitle">Retire from gamemodes (changeable every 30 days)</p>
+                    </div>
+                </div>
+                <div class="card-alert warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span><strong>Note:</strong> Retiring hides you from the leaderboard and blocks queue access. You can change this once every 30 days.</span>
+                </div>
+                <div id="retirementContainer"></div>
+                <button class="btn btn-primary btn-block account-button-spaced" id="saveRetirementBtn">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+            </div>
+
+
+
+            <!-- Admin Tools Card (if admin/tester) -->
+            <div class="status-card d-none account-section-spaced" id="adminToolsCard">
+                <div class="status-card-header">
+                    <div class="status-card-icon admin">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    <div class="status-card-title">
+                        <h3>Admin Tools</h3>
+                        <p class="status-card-subtitle">Advanced account management</p>
+                    </div>
+                </div>
+                <button class="btn btn-warning btn-block" id="reloadAccountBtn">
+                    <i class="fas fa-refresh"></i> Reload Account
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-brand">
+                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="footer-logo">
+                <span>MC Leaderboards</span>
+            </div>
+            <div class="footer-links">
+                <a href="rules.html">Rules</a>
+                <a href="/privacy-policy.html">Privacy Policy</a>
+                <a href="/terms-of-service.html">Terms of Service</a>
+                <a href="support.html">Support</a>
+                <a href="blacklisted.html">Blacklisted</a>
+            </div>
+            <p class="footer-copyright">MC Leaderboards &copy; 2025. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="js/config.js" defer></script>
+    <script src="js/dev-mode-toggle.js" defer></script>
+    <script src="js/utils.js" defer></script>
+    <script src="js/firebase-service.js" defer></script>
+    <script src="js/app-state.js" defer></script>
+    <script src="js/api-service.js" defer></script>
+    <script src="js/global-error-handler.js" defer></script>
+    <script src="js/player-search.js" defer></script>
+    <script src="js/firebase-auth-service.js" defer></script>
+    <script src="js/auth-guard.js" defer></script>
+    <script src="js/navigation.js" defer></script>
+    <script src="js/ui-enhancements.js" defer></script>
+    <script src="js/auth-ui.js" defer></script>
+    <script src="js/account-page.js" defer></script>
+</body>
+</html>

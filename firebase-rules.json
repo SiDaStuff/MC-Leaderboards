@@ -1,0 +1,135 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "tempUnblocks": {
+      ".read": false,
+      ".write": false
+    },
+    "users": {
+      ".indexOn": ["email"],
+      "$userId": {
+        ".read": false,
+        ".write": false,
+        "warnings": {
+          ".read": false,
+          ".write": "root.child('users').child(auth.uid).child('admin').val() === true || root.child('users').child(auth.uid).child('adminRole').val() != null"
+        }
+      }
+    },
+    "players": {
+      ".read": false,
+      ".write": false,
+      ".indexOn": ["username", "userId"]
+    },
+    "inbox": {
+      ".read": false,
+      ".write": false,
+      "$userId": {
+        ".indexOn": ["createdAt", "read"]
+      }
+    },
+    "inboxMeta": {
+      ".read": false,
+      ".write": false
+    },
+    "securityLogs": {
+      ".read": false,
+      ".write": false,
+      ".indexOn": ["userId", "timestamp"]
+    },
+    "altReports": {
+      ".read": false,
+      ".write": false,
+      ".indexOn": ["groupId", "createdAt"]
+    },
+    "queue": {
+      ".read": false,
+      ".write": false,
+      ".indexOn": ["gamemode", "userId", "region", "joinedAt"],
+      "$queueId": {
+        ".read": false,
+        ".write": false
+      }
+    },
+    "matches": {
+      ".read": false,
+      ".write": false,
+      ".indexOn": ["status", "playerId", "testerId", "createdAt"],
+      "$matchId": {
+        ".read": false,
+        "chat": {
+          ".read": false,
+          "$messageId": {
+            ".write": false,
+            ".read": false
+          }
+        },
+        "presence": {
+          ".read": false,
+          "$userId": {
+            ".write": false
+          }
+        },
+        "pagestats": {
+          ".read": false,
+          ".write": false
+        },
+        "participants": {
+          ".read": false,
+          "$userId": {
+            ".write": false
+          }
+        }
+      }
+    },
+    "testerAvailability": {
+      ".read": false,
+      "$userId": {
+        ".read": false,
+        ".write": false
+      }
+    },
+    "adminAuditLog": {
+      ".read": false,
+      ".write": false,
+      ".indexOn": ["timestamp", "adminUid", "action", "adminId"]
+    },
+    "adminNotes": {
+      ".read": false,
+      ".write": false,
+      ".indexOn": ["timestamp"]
+    },
+    "blacklist": {
+      ".read": false,
+      ".write": false
+    },
+    "playerReports": {
+      ".read": false,
+      ".write": false,
+      ".indexOn": ["reporterId", "createdAt", "status"]
+    },
+    "playerReportsByUser": {
+      ".read": false,
+      ".write": false,
+      "$userId": {
+        ".read": false,
+        ".write": false,
+        ".indexOn": ["createdAt"]
+      }
+    },
+    "applications": {
+      ".read": false,
+      ".write": false
+    },
+    "news": {
+      ".read": false,
+      ".write": false,
+      ".indexOn": ["createdAt"]
+    },
+    "securityScores": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}
