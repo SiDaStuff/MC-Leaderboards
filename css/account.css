@@ -124,8 +124,8 @@
         .account-modal-card {
             padding: 1rem;
             border-radius: 12px;
-            border: 1px solid rgba(242, 201, 76, 0.22);
-            background: rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(59, 179, 137, 0.22);
+            background: rgba(10, 10, 10, 0.7);
         }
 
         .account-modal-label {
@@ -171,7 +171,7 @@
             align-items: center;
             gap: 1.5rem;
             padding: 2rem;
-            background: linear-gradient(135deg, rgba(92, 210, 169, 0.08), rgba(52, 152, 219, 0.08));
+            background: #242424;
             border: 1px solid var(--border-color);
             border-radius: 16px;
             margin-bottom: 2rem;
@@ -205,7 +205,7 @@
 
         .account-info p {
             margin: 0.25rem 0;
-            color: #d1d5db;
+            color: #c7d1cc;
             font-size: 0.95rem;
         }
 

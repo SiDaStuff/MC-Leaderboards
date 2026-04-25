@@ -6,9 +6,9 @@
         .moderation-summary-card {
             margin-bottom: 1.5rem;
             padding: 1.4rem;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(59, 179, 137, 0.16);
             border-radius: 18px;
-            background: linear-gradient(145deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.82));
+            background: #242424;
         }
 
         .moderation-summary-copy {
@@ -18,7 +18,7 @@
 
         .moderation-summary-copy p {
             margin: 0;
-            color: #cbd5e1;
+            color: #c7d1cc;
             line-height: 1.6;
         }
 
@@ -48,7 +48,7 @@
         }
 
         .moderation-card-intro {
-            color: #cbd5e1;
+            color: #c7d1cc;
             line-height: 1.6;
         }
 

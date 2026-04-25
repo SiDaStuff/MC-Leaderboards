@@ -44,7 +44,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.9);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -64,7 +64,7 @@
         }
       </style>
       <div style="
-        background: var(--secondary-bg, #1e2328);
+        background: var(--secondary-bg, #222222);
         border: 2px solid var(--border-color, #3a4149);
         border-radius: 12px;
         padding: 2rem;
@@ -93,7 +93,7 @@
         </p>
 
         <div style="
-          background: var(--tertiary-bg, #2a3038);
+          background: var(--tertiary-bg, #2c2c2c);
           border-radius: 8px;
           padding: 1.5rem;
           margin-bottom: 1.5rem;
@@ -121,10 +121,10 @@
             </div>
             <div style="
               padding: 0.5rem 1rem;
-              background: ${currentMode ? 'rgba(255, 152, 0, 0.2)' : 'rgba(52, 211, 153, 0.2)'};
-              border: 1px solid ${currentMode ? 'rgba(255, 152, 0, 0.4)' : 'rgba(52, 211, 153, 0.4)'};
+              background: ${currentMode ? 'rgba(255, 152, 0, 0.2)' : 'rgba(59, 179, 137, 0.2)'};
+              border: 1px solid ${currentMode ? 'rgba(255, 152, 0, 0.4)' : 'rgba(59, 179, 137, 0.4)'};
               border-radius: 6px;
-              color: ${currentMode ? '#ff9800' : '#34d399'};
+              color: ${currentMode ? '#ff9800' : '#3bb389'};
               font-weight: 600;
               font-size: 0.85rem;
             ">
@@ -139,7 +139,7 @@
             <button id="devModeBtn" style="
               flex: 1;
               padding: 0.75rem;
-              background: ${currentMode ? 'var(--tertiary-bg, #2a3038)' : 'linear-gradient(135deg, #ff9800, #f57c00)'};
+              background: ${currentMode ? 'var(--tertiary-bg, #2c2c2c)' : 'linear-gradient(135deg, #ff9800, #f57c00)'};
               border: 2px solid ${currentMode ? 'var(--border-color, #3a4149)' : '#ff9800'};
               color: ${currentMode ? 'var(--text-color, #ffffff)' : '#ffffff'};
               border-radius: 6px;
@@ -152,8 +152,8 @@
             <button id="prodModeBtn" style="
               flex: 1;
               padding: 0.75rem;
-              background: ${!currentMode ? 'var(--tertiary-bg, #2a3038)' : 'linear-gradient(135deg, #34d399, #10b981)'};
-              border: 2px solid ${!currentMode ? 'var(--border-color, #3a4149)' : '#34d399'};
+              background: ${!currentMode ? 'var(--tertiary-bg, #2c2c2c)' : 'linear-gradient(135deg, #3bb389, #329a75)'};
+              border: 2px solid ${!currentMode ? 'var(--border-color, #3a4149)' : '#3bb389'};
               color: ${!currentMode ? 'var(--text-color, #ffffff)' : '#ffffff'};
               border-radius: 6px;
               cursor: pointer;
@@ -166,8 +166,8 @@
         </div>
 
         <div style="
-          background: rgba(52, 152, 219, 0.1);
-          border: 1px solid rgba(52, 152, 219, 0.3);
+          background: rgba(59, 179, 137, 0.1);
+          border: 1px solid rgba(59, 179, 137, 0.25);
           border-radius: 6px;
           padding: 1rem;
           margin-bottom: 1.5rem;
@@ -196,7 +196,7 @@
           <button id="closeDevModal" style="
             flex: 1;
             padding: 0.75rem;
-            background: var(--tertiary-bg, #2a3038);
+            background: var(--tertiary-bg, #2c2c2c);
             border: 2px solid var(--border-color, #3a4149);
             color: var(--text-color, #ffffff);
             border-radius: 6px;

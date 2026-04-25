@@ -101,7 +101,7 @@
             const capabilityItems = capabilities.length
                 ? `<div style="display:grid; gap:0.45rem; margin-top:1rem;">
                         ${capabilities.map((capability) => `
-                            <div style="padding:0.7rem 0.85rem; border-radius:12px; background:rgba(255,255,255,0.04); color:#dbe4f0; text-align:left;">
+                            <div style="padding:0.7rem 0.85rem; border-radius:12px; background:rgba(255,255,255,0.03); color:#d6dfda; text-align:left;">
                                 <i class="fas fa-check-circle" style="margin-right:0.45rem;"></i>${escapeHtml(capability)}
                             </div>
                         `).join('')}
@@ -1172,7 +1172,7 @@
             const animation = (current.animation || 'none').toString();
 
             const html = `<div style="text-align:left;">
-                <div style="padding: 1rem; border-radius: 12px; border: 1px solid rgba(242,201,76,0.22); background: rgba(0,0,0,0.15);">
+                <div style="padding: 1rem; border-radius: 12px; border: 1px solid rgba(59,179,137,0.22); background: rgba(10,10,10,0.7);">
                     <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem;">
                         <i class="fas fa-eye"></i> Preview
                     </div>
@@ -1194,7 +1194,7 @@
                 confirmButtonText: plus.active ? 'Save' : 'Try',
                 cancelButtonText: 'Cancel',
                 confirmButtonColor: '#d9a441',
-                background: 'rgba(37, 42, 49, 0.98)',
+                background: 'rgba(36, 36, 36, 0.98)',
                 color: '#e9eef5',
                 didOpen: () => {
                     const preview = document.getElementById('plusGradientModalPreview');
@@ -1348,4 +1348,3 @@
             if (!authenticated) return;
             await initAccount();
         });
-

@@ -4302,6 +4302,69 @@ async function detectAltAccount(email, clientIP, minecraftUsername = null) {
   }
 }
 
+async function isUserAltWhitelisted(userId) {
+  if (!userId) return false;
+  try {
+    const snapshot = await db.ref(`altWhitelist/${userId}`).once('value');
+    return snapshot.exists();
+  } catch (error) {
+    console.error('Error checking alt whitelist:', error);
+    return false;
+  }
+}
+
+async function enforceTrustedTierListAccess(userId, { profile = null, clientIP = null } = {}) {
+  if (!userId) {
+    return {
+      allowed: false,
+      code: 'INVALID_USER',
+      message: 'User ID is required for competitive access.'
+    };
+  }
+
+  const resolvedProfile = profile || await getStoredUserProfile(userId);
+  if (!resolvedProfile) {
+    return {
+      allowed: false,
+      code: 'PROFILE_NOT_FOUND',
+      message: 'User profile not found.'
+    };
+  }
+
+  const adminBypass = hasAdminAccess(resolvedProfile, resolvedProfile.email);
+  if (adminBypass) {
+    return { allowed: true, reason: 'admin_bypass' };
+  }
+
+  const whitelisted = await isUserAltWhitelisted(userId);
+  if (whitelisted) {
+    return { allowed: true, reason: 'alt_whitelist' };
+  }
+
+  if (resolvedProfile.flaggedForReview === true) {
+    return {
+      allowed: false,
+      code: 'COMPETITIVE_ACCESS_RESTRICTED',
+      message: 'This account is under security review and cannot affect the tier list until an admin clears or whitelists it.'
+    };
+  }
+
+  const email = String(resolvedProfile.email || '').trim();
+  const minecraftUsername = String(resolvedProfile.minecraftUsername || '').trim();
+  if (email && clientIP) {
+    const altCheck = await detectAltAccount(email, clientIP, minecraftUsername || null);
+    if (altCheck?.isAlt) {
+      return {
+        allowed: false,
+        code: 'ALT_DETECTION_RESTRICTED',
+        message: 'Competitive access is restricted because this account matched alt-detection checks. Ask an admin to whitelist the account if it is legitimate.'
+      };
+    }
+  }
+
+  return { allowed: true, reason: 'trusted' };
+}
+
 /**
  * Check if user is banned
  */
@@ -6658,6 +6721,17 @@ app.post('/api/queue/join', verifyAuthAndNotBanned, requireRecaptcha, queueLimit
   const sanitizedServerIP = serverIP?.toString().trim();
     
   try {
+    const trustDecision = await enforceTrustedTierListAccess(req.user.uid, {
+      profile: req.userProfile || null,
+      clientIP: getClientIP(req)
+    });
+    if (!trustDecision.allowed) {
+      return res.status(403).json({
+        error: true,
+        code: trustDecision.code || 'COMPETITIVE_ACCESS_RESTRICTED',
+        message: trustDecision.message || 'Competitive access is restricted for this account.'
+      });
+    }
 
     if (!selectedGamemodes.length || !selectedRegions.length || !sanitizedServerIP) {
       return res.status(400).json({
@@ -10748,6 +10822,30 @@ app.post('/api/match/:matchId/finalize', verifyAuth, verifyTester, requireRecapt
         error: true,
         code: 'ALREADY_FINALIZED',
         message: 'Match has already been finalized'
+      });
+    }
+
+    const [playerProfile, testerProfile] = await Promise.all([
+      getStoredUserProfile(match.playerId),
+      getStoredUserProfile(match.testerId)
+    ]);
+    const testerClientIP = getClientIP(req);
+    const [playerTrust, testerTrust] = await Promise.all([
+      enforceTrustedTierListAccess(match.playerId, {
+        profile: playerProfile,
+        clientIP: Array.isArray(playerProfile?.ipAddresses) ? playerProfile.ipAddresses[0] : (playerProfile?.ipAddresses || null)
+      }),
+      enforceTrustedTierListAccess(match.testerId, {
+        profile: testerProfile,
+        clientIP: testerClientIP
+      })
+    ]);
+
+    if (!playerTrust.allowed || !testerTrust.allowed) {
+      return res.status(403).json({
+        error: true,
+        code: 'TIER_LIST_LOCKED',
+        message: 'This match cannot change ratings because one of the accounts is under review or failed trust checks. An admin can whitelist the user in the admin panel if needed.'
       });
     }
 

@@ -183,7 +183,7 @@ window.submitQuestAnswer = async function submitQuestAnswer() {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.95);
+    background: rgba(36, 36, 36, 0.97);
     display: flex;
     align-items: center;
     justify-content: center;

@@ -11,7 +11,7 @@
 .support-simple-note {
   margin-bottom: 1rem;
   padding: 0.85rem 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(59, 179, 137, 0.14);
   border-radius: 12px;
   background: var(--primary-bg);
   color: var(--text-secondary);
@@ -34,7 +34,7 @@
   gap: 0.75rem;
   align-items: start;
   padding: 0.9rem 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(59, 179, 137, 0.14);
   border-radius: 12px;
   background: var(--primary-bg);
 }
@@ -46,7 +46,7 @@
   width: 2.4rem;
   height: 2.4rem;
   border-radius: 10px;
-  background: rgba(30, 182, 129, 0.12);
+  background: rgba(59, 179, 137, 0.14);
   color: var(--accent-color);
 }
 
@@ -63,9 +63,9 @@
 
 .support-report-fields {
   padding: 1rem;
-  border: 1px solid rgba(245, 183, 66, 0.22);
+  border: 1px solid rgba(59, 179, 137, 0.18);
   border-radius: 12px;
-  background: rgba(245, 183, 66, 0.08);
+  background: rgba(59, 179, 137, 0.08);
 }
 
 .support-report-fields.d-none {
@@ -102,7 +102,7 @@
 }
 
 .faq-item {
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(59, 179, 137, 0.14);
   border-radius: 12px;
   background: var(--primary-bg);
   overflow: hidden;
@@ -125,7 +125,7 @@
 
 .faq-question:hover,
 .faq-question.active {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(59, 179, 137, 0.08);
 }
 
 .faq-icon {

@@ -157,7 +157,7 @@
 }
 
 .hover-glow:hover {
-  box-shadow: 0 0 20px rgba(92, 210, 169, 0.3);
+  box-shadow: 0 0 20px rgba(59, 179, 137, 0.22);
 }
 
 /* Loading skeleton */
@@ -468,11 +468,11 @@ kbd {
 
 .inbox-filter-tab:hover {
   color: var(--text-primary);
-  border-color: rgba(30, 182, 129, 0.3);
+  border-color: rgba(59, 179, 137, 0.3);
 }
 
 .inbox-filter-tab.active {
-  background: rgba(30, 182, 129, 0.15);
+  background: rgba(59, 179, 137, 0.14);
   color: var(--accent-color);
   border-color: var(--accent-color);
 }
@@ -489,7 +489,7 @@ kbd {
 }
 
 .inbox-filter-tab.active .filter-count {
-  background: rgba(30, 182, 129, 0.25);
+  background: rgba(59, 179, 137, 0.22);
 }
 
 /* ===== Enhanced Empty States ===== */
@@ -588,4 +588,3 @@ kbd {
     opacity: 0.8;
   }
 }
-

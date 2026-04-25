@@ -1246,7 +1246,7 @@ function showRankUpAnimation(titleChanges, callback) {
     left: 0;
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle at top, rgba(242, 201, 76, 0.2), transparent 32%), linear-gradient(135deg, #10261f 0%, #17352b 52%, #2f2612 100%);
+    background: #242424;
     z-index: 10000;
     display: flex;
     align-items: center;
@@ -1288,7 +1288,7 @@ function showRankUpAnimation(titleChanges, callback) {
         transition: all 0.6s ease-out 2s;
       "></div>
       <button class="continue-btn" style="
-        background: linear-gradient(45deg, #2d9673, #f2c94c);
+        background: #3bb389;
         border: none;
         color: #0f1419;
         padding: 1rem 2rem;
@@ -1343,7 +1343,7 @@ function showRankUpAnimation(titleChanges, callback) {
     setTimeout(() => {
       overlay.style.background = 'white';
       setTimeout(() => {
-        overlay.style.background = 'radial-gradient(circle at top, rgba(242, 201, 76, 0.2), transparent 32%), linear-gradient(135deg, #10261f 0%, #17352b 52%, #2f2612 100%)';
+        overlay.style.background = '#242424';
       }, 100);
     }, 800);
 
@@ -1477,7 +1477,7 @@ function createConfetti() {
       position: absolute;
       width: 10px;
       height: 10px;
-      background: ${['#f2c94c', '#d9a441', '#3bb28a', '#2d9673', '#95d5b2', '#e8b84e'][Math.floor(Math.random() * 6)]};
+      background: ${['#3bb389', '#329a75', '#4abf97', '#2f8f6d', '#77d0b1', '#58b998'][Math.floor(Math.random() * 6)]};
       left: ${Math.random() * 100}%;
       top: -10px;
       animation: confettiFall ${2 + Math.random() * 3}s linear ${Math.random() * 2}s both;
@@ -1540,7 +1540,7 @@ function showMatchResultsOverlay(finalizationData, apiResult) {
   backdrop.id = 'matchResultsBackdrop';
   backdrop.style.cssText = `
     position: fixed; inset: 0;
-    background: rgba(10, 15, 25, 0.92);
+    background: rgba(10, 10, 10, 0.94);
     display: flex; align-items: center; justify-content: center;
     z-index: 10000;
     animation: fadeIn 0.4s ease-out;
@@ -1554,7 +1554,7 @@ function showMatchResultsOverlay(finalizationData, apiResult) {
   const modal = document.createElement('div');
   modal.className = 'match-results-modal-animated';
   modal.style.cssText = `
-    background: #161b26;
+    background: #242424;
     border: 1px solid rgba(255,255,255,0.07);
     border-radius: 1rem;
     max-width: 520px; width: 92%;
@@ -2171,4 +2171,3 @@ if (document.readyState === 'loading') {
 } else {
   initTesting();
 }
-
