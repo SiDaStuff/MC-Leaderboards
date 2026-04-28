@@ -17,6 +17,7 @@ class ApiService {
       ['/users/me', ['/users/me', '/users/me/standing', '/users/me/recent-matches', '/dashboard/stats']],
       ['/queue/join', ['/queue/status', '/queue/stats', '/dashboard/stats']],
       ['/queue/leave', ['/queue/status', '/queue/stats', '/dashboard/stats']],
+      ['/match/active', ['/dashboard/stats']],
       ['/support/tickets', ['/support/tickets/me']],
       ['/submit-player-report', ['/reports/my']]
     ]);
@@ -204,7 +205,7 @@ class ApiService {
     if (endpoint) {
       const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
       for (const key of this.cache.keys()) {
-        if (key.endsWith(`:${normalizedEndpoint}`)) {
+        if (key.endsWith(`:${normalizedEndpoint}`) || key.includes(`:${normalizedEndpoint}:`)) {
           this.cache.delete(key);
         }
       }
@@ -218,6 +219,14 @@ class ApiService {
     const relatedEndpoints = this.cacheInvalidationMap.get(normalizedEndpoint) || [];
     this.clearCache(normalizedEndpoint);
     relatedEndpoints.forEach((relatedEndpoint) => this.clearCache(relatedEndpoint));
+  }
+
+  clearMatchCache(matchId = null) {
+    this.clearCache('/match/active');
+    this.clearCache('/dashboard/stats');
+    if (!matchId) return;
+    this.clearCache(`/match/${matchId}`);
+    this.clearCache(`/match/${matchId}/messages`);
   }
 
   /**
@@ -834,68 +843,80 @@ class ApiService {
    * Get active match for current user
    */
   async getActiveMatch() {
-    return this.get('/match/active');
+    return this.request('/match/active', { method: 'GET', noCache: true });
   }
 
   /**
    * Get match by ID
    */
   async getMatch(matchId) {
-    return this.get(`/match/${matchId}`);
+    return this.request(`/match/${matchId}`, { method: 'GET', noCache: true });
   }
 
   /**
    * Join match
    */
   async joinMatch(matchId) {
-    return this.post(`/match/${matchId}/join`);
+    const response = await this.post(`/match/${matchId}/join`);
+    this.clearMatchCache(matchId);
+    return response;
   }
 
   /**
    * Update presence
    */
   async updatePresence(matchId, onPage) {
-    return this.post(`/match/${matchId}/presence`, { onPage });
+    const response = await this.post(`/match/${matchId}/presence`, { onPage });
+    this.clearMatchCache(matchId);
+    return response;
   }
 
   /**
    * Update page stats
    */
   async updatePageStats(matchId, isPlayer) {
-    return this.post(`/match/${matchId}/pagestats`, { isPlayer });
+    const response = await this.post(`/match/${matchId}/pagestats`, { isPlayer });
+    this.clearMatchCache(matchId);
+    return response;
   }
 
   /**
    * Send chat message
    */
   async sendChatMessage(matchId, message) {
-    return this.post(`/match/${matchId}/message`, { text: message });
+    const response = await this.post(`/match/${matchId}/message`, { text: message });
+    this.clearMatchCache(matchId);
+    return response;
   }
 
   /**
    * Get chat messages
    */
   async getChatMessages(matchId) {
-    return this.get(`/match/${matchId}/messages`);
+    return this.request(`/match/${matchId}/messages`, { method: 'GET', noCache: true });
   }
 
   /**
    * Delete chat message
    */
   async deleteChatMessage(matchId, messageId) {
-    return this.delete(`/match/${matchId}/message/${messageId}`);
+    const response = await this.delete(`/match/${matchId}/message/${messageId}`);
+    this.clearMatchCache(matchId);
+    return response;
   }
 
   /**
    * Report a specific chat message
    */
   async reportChatMessage(matchId, messageId, payload = {}) {
-    return this.post(`/match/${matchId}/message/${messageId}/report`, {
+    const response = await this.post(`/match/${matchId}/message/${messageId}/report`, {
       reason: payload.reason || 'chat_abuse',
       description: payload.description || '',
       evidenceLinks: Array.isArray(payload.evidenceLinks) ? payload.evidenceLinks : [],
       hasEvidence: payload.hasEvidence === true
     });
+    this.clearMatchCache(matchId);
+    return response;
   }
 
   /**
@@ -920,28 +941,36 @@ class ApiService {
    * Finalize match
    */
   async finalizeMatch(matchId, data) {
-    return this.post(`/match/${matchId}/finalize`, data);
+    const response = await this.post(`/match/${matchId}/finalize`, data);
+    this.clearMatchCache(matchId);
+    return response;
   }
 
   /**
    * Mark match as started
    */
   async markMatchStarted(matchId) {
-    return this.post(`/match/${matchId}/started`);
+    const response = await this.post(`/match/${matchId}/started`);
+    this.clearMatchCache(matchId);
+    return response;
   }
 
   /**
    * Abort match
    */
   async abortMatch(matchId) {
-    return this.post(`/match/${matchId}/abort`);
+    const response = await this.post(`/match/${matchId}/abort`);
+    this.clearMatchCache(matchId);
+    return response;
   }
 
   /**
    * Vote to end match as draw (no scoring)
    */
   async voteDraw(matchId, agree = true) {
-    return this.post(`/match/${matchId}/draw-vote`, { agree: agree === true });
+    const response = await this.post(`/match/${matchId}/draw-vote`, { agree: agree === true });
+    this.clearMatchCache(matchId);
+    return response;
   }
 
   // ===== Admin Endpoints =====

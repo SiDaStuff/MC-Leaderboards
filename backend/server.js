@@ -10089,20 +10089,9 @@ const matchSSEClients = new Map(); // matchId -> Set<{ res, userId }>
  * GET /api/match/:matchId/stream - SSE stream for real-time match updates
  * Requires authentication. Only match participants and admins can connect.
  */
-app.get('/api/match/:matchId/stream', async (req, res) => {
+app.get('/api/match/:matchId/stream', verifyAuth, async (req, res) => {
   try {
-    // Manual auth check (can't use middleware that calls next() for SSE)
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: true, message: 'Authentication required' });
-    }
-    let decodedToken;
-    try {
-      decodedToken = await admin.auth().verifyIdToken(authHeader.split('Bearer ')[1]);
-    } catch {
-      return res.status(401).json({ error: true, message: 'Invalid token' });
-    }
-    const userId = decodedToken.uid;
+    const userId = req.user.uid;
 
     const { matchId } = req.params;
     const matchRef = db.ref(`matches/${matchId}`);
@@ -10115,8 +10104,8 @@ app.get('/api/match/:matchId/stream', async (req, res) => {
     // Only participants and admins
     const isParticipant = matchData.playerId === userId || matchData.testerId === userId;
     if (!isParticipant) {
-      const profile = (await db.ref(`users/${userId}`).once('value')).val();
-      if (!hasAdminAccess(profile || {}, decodedToken.email)) {
+      const profile = req.userProfile || (await db.ref(`users/${userId}`).once('value')).val();
+      if (!hasAdminAccess(profile || {}, req.user.email)) {
         return res.status(403).json({ error: true, message: 'Access denied' });
       }
     }
@@ -10124,11 +10113,12 @@ app.get('/api/match/:matchId/stream', async (req, res) => {
     // Set up SSE headers
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no', // Disable nginx buffering for this stream
     });
     res.flushHeaders();
+    res.socket?.setKeepAlive?.(true, 30000);
 
     // Send initial state
     res.write(`data: ${JSON.stringify({ type: 'match', data: sanitizeMatchForClient(matchData, matchId) })}\n\n`);
@@ -10361,23 +10351,31 @@ app.post('/api/match/:matchId/pagestats', verifyAuth, async (req, res) => {
     }
     
     const pagestatsRef = matchRef.child('pagestats');
-    const previouslyBothJoined = !!(match.pagestats?.playerJoined && match.pagestats?.testerJoined);
-    const pagestats = {
-      playerJoined: isPlayer ? true : (match.pagestats?.playerJoined || false),
-      testerJoined: !isPlayer ? true : (match.pagestats?.testerJoined || false),
+    const previousPagestats = match.pagestats || {};
+    const previouslyBothJoined = !!(previousPagestats.playerJoined && previousPagestats.testerJoined);
+    const joinedField = isPlayer ? 'playerJoined' : 'testerJoined';
+
+    await pagestatsRef.update({
+      [joinedField]: true,
       lastUpdate: new Date().toISOString()
+    });
+
+    const updatedSnapshot = await matchRef.once('value');
+    const updatedMatch = updatedSnapshot.val() || {};
+    const pagestats = {
+      playerJoined: updatedMatch.pagestats?.playerJoined === true,
+      testerJoined: updatedMatch.pagestats?.testerJoined === true,
+      lastUpdate: updatedMatch.pagestats?.lastUpdate || new Date().toISOString()
     };
     
-    await pagestatsRef.set(pagestats);
-    
     // FIX #2: If both players have now joined, mark timeout as handled (no need to check later)
-    if (pagestats.playerJoined && pagestats.testerJoined && !match.timeoutHandled) {
+    if (pagestats.playerJoined && pagestats.testerJoined && !updatedMatch.timeoutHandled) {
       console.log('Both players joined match', matchId, ', cancelling timeout check');
       await matchRef.update({ timeoutHandled: true });
     }
 
     // If tester just joined, start player join timeout
-    if (!isPlayer && pagestats.testerJoined && !match.pagestats?.testerJoined) {
+    if (!isPlayer && pagestats.testerJoined && !previousPagestats.testerJoined && !updatedMatch.playerJoinTimeout) {
       const playerJoinTimeout = {
         startedAt: new Date().toISOString(),
         timeoutMinutes: 3,
@@ -10398,7 +10396,7 @@ app.post('/api/match/:matchId/pagestats', verifyAuth, async (req, res) => {
       }, PLAYER_JOIN_TIMEOUT_MS);
     }
 
-    if (pagestats.playerJoined && pagestats.testerJoined && !previouslyBothJoined && !match.matchStarted && !match.countdownStartedAt) {
+    if (pagestats.playerJoined && pagestats.testerJoined && !previouslyBothJoined && !updatedMatch.matchStarted && !updatedMatch.countdownStartedAt) {
       const countdownStartedAt = new Date().toISOString();
       await matchRef.update({
         countdownStartedAt,

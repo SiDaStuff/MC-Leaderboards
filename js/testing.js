@@ -2172,6 +2172,15 @@ window.showCustomModal = showCustomModal;
 window.toggleSettings = toggleSettings;
 window.closeMatchResults = closeMatchResults;
 window.returnToDashboard = returnToDashboard;
+window.handleSendMessage = handleSendMessage;
+window.deleteMessage = deleteMessage;
+window.reportChatMessage = reportChatMessage;
+window.updatePresence = updatePresence;
+window.handleMarkMatchStarted = handleMarkMatchStarted;
+window.handleFinalizeMatch = handleFinalizeMatch;
+window.handleAbortMatch = handleAbortMatch;
+window.handleDrawVote = handleDrawVote;
+window.openSupportReportForMatch = openSupportReportForMatch;
 
 // Initialize on page load
 if (document.readyState === 'loading') {
