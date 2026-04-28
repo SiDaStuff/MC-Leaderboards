@@ -59,6 +59,12 @@ function setSignupUiState(isBusy, mode) {
   if (googleBtn) googleBtn.disabled = isBusy;
 }
 
+window.mclbBeforeSwalOpen = function closeSignupOverlayBeforeAlert() {
+  if (window.mclbLoadingOverlay && typeof window.mclbLoadingOverlay.hide === 'function') {
+    window.mclbLoadingOverlay.hide();
+  }
+};
+
 async function ensureApiTokenReady(preferredUser = null, maxAttempts = 40) {
   if (window.firebaseAuthService && typeof window.firebaseAuthService.ensureApiTokenReady === 'function') {
     return window.firebaseAuthService.ensureApiTokenReady(preferredUser, {

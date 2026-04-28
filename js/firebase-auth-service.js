@@ -796,29 +796,33 @@ const firebaseAuthService = {
 
     try {
       if (window.MCLBRealtimeStream?.connect) {
-        const connection = window.MCLBRealtimeStream.connect({
-          url: '/api/admin/ban-status-stream',
+        let connection = null;
+        connection = window.MCLBRealtimeStream.connect({
+          url: `/api/user/${encodeURIComponent(userId)}/stream`,
           onOpen: () => {
             console.log('Connected to real-time ban/blacklist monitoring stream');
           },
-          onMessage: (data) => {
-            if (!data || data.connected || !data.timestamp) return;
-            if (data.userId && data.userId !== userId) return;
+          onEvent: (eventName, data) => {
+            if (eventName !== 'profile') return;
+            const profile = data?.profile || {};
 
-            if (data.isBanned) {
+            if (profile.banned) {
               console.log('Ban detected via real-time stream, logging out user');
-              this.handleBanDetected(data.banReason, data.banExpires, 'ban');
+              this.handleBanDetected(profile.banReason, profile.banExpires, 'ban');
               return;
             }
 
-            if (data.isBlacklisted) {
+            if (profile.blacklisted) {
               console.log('Blacklist detected via real-time stream, keeping session active');
-              this.applyRealtimeBlacklistStatus(data.blacklistReason, data.blacklistExpires);
+              this.applyRealtimeBlacklistStatus(profile.blacklistReason, profile.blacklistExpires, profile);
             }
           },
           onError: (error) => {
             console.error('Ban status stream error:', error);
             fallbackToPolling();
+            if (connection) {
+              connection.close();
+            }
           }
         });
 
@@ -828,23 +832,22 @@ const firebaseAuthService = {
         return;
       }
 
-      this.banStatusEventSource = new EventSource(`/api/admin/ban-status-stream`, { withCredentials: true });
+      this.banStatusEventSource = new EventSource(`/api/user/${encodeURIComponent(userId)}/stream`, { withCredentials: true });
 
-      this.banStatusEventSource.addEventListener('message', (event) => {
+      this.banStatusEventSource.addEventListener('profile', (event) => {
         try {
           const data = JSON.parse(event.data);
-          if (data.connected || !data.timestamp) return;
-          if (data.userId && data.userId !== userId) return;
+          const profile = data?.profile || {};
 
-          if (data.isBanned) {
+          if (profile.banned) {
             console.log('Ban detected via real-time stream, logging out user');
-            this.handleBanDetected(data.banReason, data.banExpires, 'ban');
+            this.handleBanDetected(profile.banReason, profile.banExpires, 'ban');
             return;
           }
 
-          if (data.isBlacklisted) {
+          if (profile.blacklisted) {
             console.log('Blacklist detected via real-time stream, keeping session active');
-            this.applyRealtimeBlacklistStatus(data.blacklistReason, data.blacklistExpires);
+            this.applyRealtimeBlacklistStatus(profile.blacklistReason, profile.blacklistExpires, profile);
           }
         } catch (err) {
           console.error('Error parsing ban status update:', err);

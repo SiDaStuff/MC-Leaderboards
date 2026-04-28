@@ -88,6 +88,14 @@ const MCLBUI = (() => {
 
     const originalFire = Swal.fire.bind(Swal);
     Swal.fire = function patchedSwalFire(...args) {
+      try {
+        if (typeof window.mclbBeforeSwalOpen === 'function') {
+          window.mclbBeforeSwalOpen();
+        }
+      } catch (error) {
+        console.warn('SweetAlert pre-open hook failed:', error);
+      }
+
       if (args.length === 1 && typeof args[0] === 'object') {
         return originalFire(themedSwalConfig(args[0]));
       }
@@ -103,6 +111,14 @@ const MCLBUI = (() => {
 
   function alert(config = {}) {
     patchSwal();
+    try {
+      if (typeof window.mclbBeforeSwalOpen === 'function') {
+        window.mclbBeforeSwalOpen();
+      }
+    } catch (error) {
+      console.warn('SweetAlert pre-open hook failed:', error);
+    }
+
     if (typeof Swal !== 'undefined' && typeof Swal.fire === 'function') {
       return Swal.fire(themedSwalConfig(config));
     }

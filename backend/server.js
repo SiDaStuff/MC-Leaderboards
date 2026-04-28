@@ -4843,9 +4843,11 @@ app.get('/api/admin/ban-status-stream', verifyAuth, (req, res) => {
 
   // Set up SSE (Server-Sent Events) headers
   res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no'); // Disable proxying buffering (for nginx)
+  res.flushHeaders?.();
+  res.socket?.setKeepAlive?.(true, 30000);
 
   // Send initial connection message
   res.write(`data: {"connected":true,"userId":"${userId}"}\n\n`);
@@ -9928,7 +9930,7 @@ app.post('/api/tester/availability', verifyAuthAndNotBanned, verifyTester, requi
       }
 
       const newQueueRef = queueRef.push();
-      await newQueueRef.set(buildQueueEntry({
+      const queueEntry = buildQueueEntry({
         queueId: newQueueRef.key,
         userId: req.user.uid,
         minecraftUsername: userProfile.minecraftUsername,
@@ -9939,35 +9941,42 @@ app.post('/api/tester/availability', verifyAuthAndNotBanned, verifyTester, requi
         testerEligible: true,
         source: 'tester_dashboard',
         timeoutAt: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString()
-      }));
+      });
+      await newQueueRef.set(queueEntry);
 
-      // Notify users who have selected this gamemode for tester availability notifications
-      const usersRef = db.ref('users');
-      const usersSnapshot = await usersRef.once('value');
-      const users = usersSnapshot.val() || {};
-      
-      for (const [uid, user] of Object.entries(users)) {
-        if (uid === req.user.uid) continue; // Don't notify self
+      const matchResult = await attemptImmediateMatchmaking(queueEntry, userProfile);
+
+      if (!matchResult) {
+        // Notify users who have selected this gamemode for tester availability notifications
+        const usersRef = db.ref('users');
+        const usersSnapshot = await usersRef.once('value');
+        const users = usersSnapshot.val() || {};
         
-        const notifySettings = user.notificationSettings || {};
-        const selectedGamemodes = notifySettings.testerAvailabilityGamemodes || [];
-        
-        const matchingGamemodes = gamemodes.filter((selectedGamemode) => selectedGamemodes.includes(selectedGamemode));
-        for (const notifyGamemode of matchingGamemodes) {
-          await createNotification(uid, {
-            type: 'tester_available',
-            title: 'Tester Available',
-            message: `A tier tester is now available for ${notifyGamemode} in ${regions.join(', ')}`,
-            gamemode: notifyGamemode,
-            region: regions[0] || null,
-            regions
-          });
+        for (const [uid, user] of Object.entries(users)) {
+          if (uid === req.user.uid) continue; // Don't notify self
+          
+          const notifySettings = user.notificationSettings || {};
+          const selectedGamemodes = notifySettings.testerAvailabilityGamemodes || [];
+          
+          const matchingGamemodes = gamemodes.filter((selectedGamemode) => selectedGamemodes.includes(selectedGamemode));
+          for (const notifyGamemode of matchingGamemodes) {
+            await createNotification(uid, {
+              type: 'tester_available',
+              title: 'Tester Available',
+              message: `A tier tester is now available for ${notifyGamemode} in ${regions.join(', ')}`,
+              gamemode: notifyGamemode,
+              region: regions[0] || null,
+              regions
+            });
+          }
         }
       }
 
       res.json({
         success: true,
-        message: 'Joined the queue as a tier tester'
+        matched: Boolean(matchResult),
+        matchId: matchResult?.matchId || null,
+        message: matchResult ? 'Match found! Redirecting to testing page...' : 'Joined the queue as a tier tester'
       });
     } else {
       await clearUserQueueEntries(req.user.uid);

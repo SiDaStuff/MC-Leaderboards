@@ -15,6 +15,9 @@ let lastChatSignature = '';
 const chatMessageCache = new Map();
 let matchEventSource = null;
 let matchRealtimeRefreshTimeout = null;
+let joinCountdownKey = '';
+let playerJoinCountdownKey = '';
+let matchStartCountdownKey = '';
 
 function getRoleLabelForMatchUser(userId) {
   if (!match || !userId) return 'Participant';
@@ -294,19 +297,20 @@ function startCountdownTimer() {
   const expiresAt = new Date(match.joinTimeout.expiresAt).getTime();
   countdownStartTime = new Date(match.joinTimeout.startedAt).getTime();
   const totalDuration = 3 * 60 * 1000; // 3 minutes in ms
+  joinCountdownKey = `${match.joinTimeout.startedAt || ''}:${match.joinTimeout.expiresAt || ''}`;
 
   // Clear any existing interval
   if (countdownInterval) {
     clearInterval(countdownInterval);
   }
 
-  // Update countdown every second
-  countdownInterval = setInterval(() => {
+  const tick = () => {
     const now = Date.now();
     const remaining = Math.max(0, expiresAt - now);
     
     if (remaining <= 0) {
       clearInterval(countdownInterval);
+      countdownInterval = null;
       document.getElementById('countdownDisplay').textContent = '0:00';
       document.getElementById('countdownProgress').style.width = '0%';
       return;
@@ -336,7 +340,10 @@ function startCountdownTimer() {
       progressBar.style.background = 'var(--warning-color)';
       document.getElementById('countdownDisplay').style.color = 'var(--warning-color)';
     }
-  }, 1000);
+  };
+
+  tick();
+  countdownInterval = setInterval(tick, 1000);
 }
 
 /**
@@ -348,9 +355,14 @@ function startMatchStartCountdown() {
   const startedAt = new Date(match.countdownStartedAt).getTime();
   const totalDuration = 5 * 60 * 1000; // 5 minutes in ms
   const expiresAt = startedAt + totalDuration;
+  matchStartCountdownKey = String(match.countdownStartedAt || '');
 
-  // Update countdown every second
-  window.matchStartCountdown = setInterval(() => {
+  if (window.matchStartCountdown) {
+    clearInterval(window.matchStartCountdown);
+    window.matchStartCountdown = null;
+  }
+
+  const tick = () => {
     const now = Date.now();
     const remaining = Math.max(0, expiresAt - now);
     
@@ -387,7 +399,10 @@ function startMatchStartCountdown() {
       progressBar.style.background = 'var(--warning-color)';
       document.getElementById('matchStartedCountdown').style.color = 'var(--warning-color)';
     }
-  }, 1000);
+  };
+
+  tick();
+  window.matchStartCountdown = setInterval(tick, 1000);
 }
 
 /**
@@ -427,18 +442,20 @@ async function handleMarkMatchStarted() {
         clearInterval(window.matchStartCountdown);
         window.matchStartCountdown = null;
       }
+      matchStartCountdownKey = '';
       
       showCustomModal('Match Started', 'The tier tester marked the match as started. Begin playing!', null);
+      scheduleAuthoritativeMatchRefresh(60);
     } else {
       btn.disabled = false;
-      btn.textContent = '<i class="fas fa-play"></i> Mark Match as Started';
+      btn.innerHTML = '<i class="fas fa-play"></i> Mark Match as Started';
       showCustomModal('Error', escapeHtml(result.message || 'Failed to mark match as started'), null);
     }
   } catch (error) {
     console.error('Error marking match as started:', error);
     const btn = document.getElementById('markStartedBtn');
     btn.disabled = false;
-    btn.textContent = '<i class="fas fa-play"></i> Mark Match as Started';
+    btn.innerHTML = '<i class="fas fa-play"></i> Mark Match as Started';
     showCustomModal('Error', escapeHtml(error.message || 'Error marking match as started'), null);
   }
 }
@@ -492,6 +509,7 @@ function updateBothJoinedStatus() {
       clearInterval(countdownInterval);
       countdownInterval = null;
     }
+    joinCountdownKey = '';
     document.getElementById('waitingState').classList.add('d-none');
     document.getElementById('matchContent').classList.remove('d-none');
     
@@ -500,6 +518,7 @@ function updateBothJoinedStatus() {
       clearInterval(window.playerJoinCountdown);
       window.playerJoinCountdown = null;
     }
+    playerJoinCountdownKey = '';
 
     // Show match started section if not already started
     if (match.matchStarted) {
@@ -510,6 +529,7 @@ function updateBothJoinedStatus() {
         clearInterval(window.matchStartCountdown);
         window.matchStartCountdown = null;
       }
+      matchStartCountdownKey = '';
     } else if (match.countdownStartedAt) {
       // Match not started yet, show countdown
       document.getElementById('matchStartedSection').style.display = 'block';
@@ -522,7 +542,7 @@ function updateBothJoinedStatus() {
           : 'Both sides have joined. The tier tester has <strong>5 minutes</strong> to mark the match as started.';
       }
       
-      if (!window.matchStartCountdown) {
+      if (!window.matchStartCountdown || matchStartCountdownKey !== String(match.countdownStartedAt || '')) {
         startMatchStartCountdown();
       }
     }
@@ -538,12 +558,14 @@ function updateBothJoinedStatus() {
     document.getElementById('matchAlreadyStartedSection').style.display = 'none';
     
     // Start countdown timer if not already started
-    if (!countdownInterval && match.joinTimeout) {
+    const nextJoinCountdownKey = match.joinTimeout ? `${match.joinTimeout.startedAt || ''}:${match.joinTimeout.expiresAt || ''}` : '';
+    if (match.joinTimeout && (!countdownInterval || joinCountdownKey !== nextJoinCountdownKey)) {
       startCountdownTimer();
     }
 
     // Show countdown timer for testers waiting for players
-    if (isTester && !pagestats.playerJoined && match.playerJoinTimeout) {
+    const nextPlayerJoinCountdownKey = match.playerJoinTimeout ? `${match.playerJoinTimeout.startedAt || ''}:${match.playerJoinTimeout.timeoutMinutes || ''}` : '';
+    if (isTester && !pagestats.playerJoined && match.playerJoinTimeout && (!window.playerJoinCountdown || playerJoinCountdownKey !== nextPlayerJoinCountdownKey)) {
       showPlayerJoinCountdown();
     }
   }
@@ -816,6 +838,10 @@ function stopSecureMatchPolling() {
     clearInterval(chatPollingInterval);
     chatPollingInterval = null;
   }
+
+  joinCountdownKey = '';
+  playerJoinCountdownKey = '';
+  matchStartCountdownKey = '';
 }
 
 /**
@@ -859,6 +885,7 @@ async function handleSendMessage(event) {
     messageInput.value = '';
     lastMessageTime = now;
     await loadChatMessages();
+    scheduleAuthoritativeMatchRefresh(60);
   } catch (error) {
     Swal.fire({
       icon: 'error',
@@ -878,6 +905,7 @@ async function deleteMessage(messageId) {
   try {
     await apiService.deleteChatMessage(matchId, messageId);
     await loadChatMessages();
+    scheduleAuthoritativeMatchRefresh(60);
   } catch (error) {
     Swal.fire({
       icon: 'error',
@@ -1086,42 +1114,18 @@ function getMatchResultInfo() {
  */
 function showScoreSubmissionForm() {
   const firstTo = getMatchFirstTo();
-  const winnerRequirement = `Winner must reach ${firstTo}`;
   const testerDisplayName = AppState.getProfile()?.minecraftUsername
     || match?.testerUsername
     || AppState.currentUser?.displayName
     || 'Tester';
   const modalBody = `
     <div class="finalize-modal-shell">
-      <div class="finalize-modal-intro">
-        <div class="finalize-modal-panel">
-          <div class="finalize-modal-kicker">Match Review</div>
-          <h3 class="finalize-modal-title">Confirm the completed score</h3>
-          <p class="finalize-modal-copy">Enter the final result exactly as played. A tied result cannot be submitted, and the winner must hit the configured target.</p>
-        </div>
-        <div class="finalize-modal-panel finalize-meta-list">
-          <div class="finalize-meta-row">
-            <span class="finalize-meta-label">Player</span>
-            <span class="finalize-meta-value">${escapeHtml(match.playerUsername)}</span>
-          </div>
-          <div class="finalize-meta-row">
-            <span class="finalize-meta-label">Gamemode</span>
-            <span class="finalize-meta-value">${escapeHtml(match.gamemode.toUpperCase())}</span>
-          </div>
-          <div class="finalize-meta-row">
-            <span class="finalize-meta-label">Format</span>
-            <span class="finalize-meta-value">First to ${firstTo}</span>
-          </div>
-        </div>
-      </div>
-
       <div class="finalize-scoreboard">
         <div class="finalize-scoreboard-header">
           <div>
-            <h4 class="finalize-scoreboard-title">Score Entry</h4>
-            <p class="finalize-scoreboard-subtitle">Record both sides of the finished set.</p>
+            <h4 class="finalize-scoreboard-title">${escapeHtml(match.gamemode.toUpperCase())} Score</h4>
+            <p class="finalize-scoreboard-subtitle">First to ${firstTo}. No ties.</p>
           </div>
-          <div class="finalize-target-chip">${winnerRequirement}</div>
         </div>
 
         <div class="finalize-score-grid">
@@ -1136,12 +1140,6 @@ function showScoreSubmissionForm() {
             <span class="finalize-score-name">${escapeHtml(testerDisplayName)}</span>
             <input type="number" id="testerScore" class="finalize-score-input" min="0" max="${firstTo}" value="0" inputmode="numeric">
           </div>
-        </div>
-
-        <div class="finalize-helper-row">
-          <div class="finalize-helper-chip">No ties</div>
-          <div class="finalize-helper-chip">Winner must reach ${firstTo}</div>
-          <div class="finalize-helper-chip">Submit only once the match is complete</div>
         </div>
       </div>
 
@@ -1197,15 +1195,17 @@ function showScoreSubmissionForm() {
 async function finalizeMatch(data) {
   try {
     const result = await apiService.finalizeMatch(matchId, data);
+    const finalizationData = result?.finalizationData || data;
 
     // Match results will be shown by handleMatchEnded() when realtime update comes through
     // Update local match status optimistically
     match.status = 'ended';
     match.finalized = true;
-    match.finalizationData = data; // Store locally for immediate display
+    match.finalizationData = finalizationData; // Store locally for immediate display
 
     // Show results immediately (will be replaced by realtime update if needed)
-    showMatchResults(data, result);
+    showMatchResults(finalizationData, result);
+    scheduleAuthoritativeMatchRefresh(60);
 
   } catch (error) {
     Swal.fire({
@@ -1548,7 +1548,7 @@ function showMatchResultsOverlay(finalizationData, apiResult) {
   document.body.appendChild(backdrop);
 
   // Determine accent — subtle and muted
-  const accentColor = isDrawWithoutScoring ? '#c69f3e' : youWon ? '#3bb28a' : '#d9a441';
+  const accentColor = isDrawWithoutScoring ? 'var(--warning-color)' : youWon ? 'var(--accent-color)' : 'var(--error-color)';
 
   // Build modal
   const modal = document.createElement('div');
@@ -1870,6 +1870,7 @@ async function handleAbortMatch() {
       await apiService.abortMatch(matchId);
       // Match is now finalized with scores, so results will be shown automatically
       // via the secure match polling loop.
+      scheduleAuthoritativeMatchRefresh(60);
     } catch (error) {
       Swal.fire({
         icon: 'error',
@@ -1915,6 +1916,7 @@ async function handleDrawVote() {
       };
     }
     updateDrawVoteStatus();
+    scheduleAuthoritativeMatchRefresh(60);
   } catch (error) {
     Swal.fire({
       icon: 'error',
@@ -2058,22 +2060,25 @@ function showPlayerJoinCountdown() {
   const startedAt = new Date(match.playerJoinTimeout.startedAt);
   const timeoutMs = match.playerJoinTimeout.timeoutMinutes * 60 * 1000;
   const endTime = startedAt.getTime() + timeoutMs;
+  playerJoinCountdownKey = `${match.playerJoinTimeout.startedAt || ''}:${match.playerJoinTimeout.timeoutMinutes || ''}`;
 
   // Clear any existing countdown
   if (window.playerJoinCountdown) {
     clearInterval(window.playerJoinCountdown);
+    window.playerJoinCountdown = null;
   }
 
   const countdownElement = document.getElementById('playerJoinCountdown');
   if (!countdownElement) return;
 
-  window.playerJoinCountdown = setInterval(() => {
+  const tick = () => {
     const now = Date.now();
     const remaining = Math.max(0, endTime - now);
 
     if (remaining <= 0) {
       // Time's up - server will handle auto-end
       clearInterval(window.playerJoinCountdown);
+      window.playerJoinCountdown = null;
       countdownElement.innerHTML = `
         <div class="countdown-expired">
           <i class="fas fa-exclamation-triangle text-danger"></i>
@@ -2111,7 +2116,10 @@ function showPlayerJoinCountdown() {
     if (remaining <= 60000) {
       countdownElement.classList.add('urgent');
     }
-  }, 1000);
+  };
+
+  tick();
+  window.playerJoinCountdown = setInterval(tick, 1000);
 }
 
 /**

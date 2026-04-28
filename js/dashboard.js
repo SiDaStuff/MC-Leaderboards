@@ -242,6 +242,7 @@ async function initDashboard() {
   // Start cooldown timer updates
   startCooldownTimers();
   startDashboardSSE();
+  startActiveMatchPolling();
 
   // Security hardening: avoid broad client-side Firebase reads (queue/matches/users).
   // Use backend endpoints only for dashboard state and polling.
@@ -1182,6 +1183,7 @@ function startDashboardSSE() {
       },
       onError: (error) => {
         console.warn('Dashboard SSE error', error);
+        startActiveMatchPolling();
       }
     });
 
@@ -1585,13 +1587,18 @@ async function handleJoinQueue(event) {
 
   try {
     if (tierTester) {
-      await apiService.setTesterAvailability(true, gamemodes, regions, serverIP);
+      const availabilityResponse = await apiService.setTesterAvailability(true, gamemodes, regions, serverIP);
 
       const stayInQueueCheckbox = document.getElementById('stayInQueueAfterMatch');
       if (stayInQueueCheckbox) {
         await apiService.updateProfile({
           stayInQueueAfterMatch: stayInQueueCheckbox.checked
         });
+      }
+
+      if (availabilityResponse?.matched && availabilityResponse.matchId) {
+        window.location.href = `testing.html?matchId=${encodeURIComponent(availabilityResponse.matchId)}`;
+        return;
       }
 
       localStorage.setItem('queueJoinTime', Date.now());

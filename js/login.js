@@ -26,6 +26,13 @@ function resetLoginBusyState(button = null) {
   }
 }
 
+window.mclbBeforeSwalOpen = function closeLoginOverlayBeforeAlert() {
+  setLoginAuthOverlay(false);
+  if (window.mclbLoadingOverlay && typeof window.mclbLoadingOverlay.hide === 'function') {
+    window.mclbLoadingOverlay.hide();
+  }
+};
+
 async function showQueuedLoginNotice() {
   let rawNotice = null;
   try {

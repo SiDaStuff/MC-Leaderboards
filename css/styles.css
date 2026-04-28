@@ -326,7 +326,8 @@ a:hover {
 }
 
 .swal2-popup.mclb-swal-popup .swal2-input,
-.swal2-popup.mclb-swal-popup .swal2-textarea {
+.swal2-popup.mclb-swal-popup .swal2-textarea,
+.swal2-popup.mclb-swal-popup .swal2-select {
   background: var(--primary-bg);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
@@ -334,7 +335,8 @@ a:hover {
 }
 
 .swal2-popup.mclb-swal-popup .swal2-input:focus,
-.swal2-popup.mclb-swal-popup .swal2-textarea:focus {
+.swal2-popup.mclb-swal-popup .swal2-textarea:focus,
+.swal2-popup.mclb-swal-popup .swal2-select:focus {
   border-color: var(--accent-color);
   box-shadow: 0 0 0 3px rgba(59, 179, 137, 0.18);
 }
@@ -768,6 +770,22 @@ button:focus-visible {
   color: var(--text-primary);
   font-size: 1rem;
   transition: var(--transition);
+}
+
+.form-select option,
+.form-control option,
+select option,
+.swal2-popup.mclb-swal-popup .swal2-select option {
+  background-color: var(--primary-bg);
+  color: var(--text-primary);
+}
+
+.form-select optgroup,
+.form-control optgroup,
+select optgroup,
+.swal2-popup.mclb-swal-popup .swal2-select optgroup {
+  background-color: var(--primary-bg);
+  color: var(--text-secondary);
 }
 
 .form-input:hover,
