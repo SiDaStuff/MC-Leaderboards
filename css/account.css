@@ -258,7 +258,7 @@
 
         .standing-section {
             border: 1px solid rgba(92, 210, 169, 0.25);
-            background: linear-gradient(160deg, rgba(92, 210, 169, 0.1), rgba(29, 35, 55, 0.6));
+            background: rgba(255, 255, 255, 0.03);
         }
 
         .standing-head {
@@ -282,7 +282,7 @@
             height: 100%;
             width: 0;
             transition: width 0.35s ease;
-            background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+            background: var(--accent-color);
         }
 
         .standing-levels {
@@ -497,7 +497,7 @@
         /* Plus Subscription Section */
         .plus-badge {
             display: inline-block;
-            background: linear-gradient(135deg, #f2c94c, #d9a441);
+            background: #d9a441;
             color: white;
             padding: 0.25rem 0.75rem;
             border-radius: 20px;
@@ -507,7 +507,7 @@
         }
 
         .plus-section {
-            background: linear-gradient(135deg, rgba(242, 201, 76, 0.05), rgba(217, 164, 65, 0.05));
+            background: rgba(217, 164, 65, 0.06);
         }
 
         .plus-section .status-card-icon {
@@ -600,8 +600,9 @@
         .card .form-input:focus,
         .card select:focus {
             border-color: var(--accent-color);
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(92, 210, 169, 0.1);
+            outline: 2px solid rgba(92, 210, 169, 0.45);
+            outline-offset: 1px;
+            box-shadow: none;
         }
 
         /* Help text */

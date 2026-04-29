@@ -95,16 +95,16 @@
   }
 }
 
-/* Gradient animation */
-@keyframes gradient {
+/* Loading placeholder pulse */
+@keyframes skeletonPulse {
   0% {
-    background-position: 0% 50%;
+    opacity: 0.62;
   }
   50% {
-    background-position: 100% 50%;
+    opacity: 1;
   }
   100% {
-    background-position: 0% 50%;
+    opacity: 0.62;
   }
 }
 
@@ -153,23 +153,17 @@
 }
 
 .hover-glow {
-  transition: box-shadow 0.3s ease;
+  transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
 .hover-glow:hover {
-  box-shadow: 0 0 20px rgba(59, 179, 137, 0.22);
+  transform: translateY(-1px);
 }
 
 /* Loading skeleton */
 .skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--tertiary-bg) 0%,
-    var(--border-color) 50%,
-    var(--tertiary-bg) 100%
-  );
-  background-size: 200% 100%;
-  animation: gradient 1.5s ease infinite;
+  background: rgba(255, 255, 255, 0.08);
+  animation: skeletonPulse 1.2s ease-in-out infinite;
   border-radius: 0.5rem;
 }
 

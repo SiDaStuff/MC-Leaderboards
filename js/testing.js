@@ -1441,7 +1441,7 @@ function createLightStreams() {
       position: absolute;
       width: 2px;
       height: 100px;
-      background: linear-gradient(to bottom, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0));
+      background: rgba(255, 255, 255, 0.5);
       top: 50%;
       left: 50%;
       transform-origin: 50% 100%;

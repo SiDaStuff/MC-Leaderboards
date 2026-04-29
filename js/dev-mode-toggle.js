@@ -139,7 +139,7 @@
             <button id="devModeBtn" style="
               flex: 1;
               padding: 0.75rem;
-              background: ${currentMode ? 'var(--tertiary-bg, #2c2c2c)' : 'linear-gradient(135deg, #ff9800, #f57c00)'};
+              background: ${currentMode ? 'var(--tertiary-bg, #2c2c2c)' : '#f57c00'};
               border: 2px solid ${currentMode ? 'var(--border-color, #3a4149)' : '#ff9800'};
               color: ${currentMode ? 'var(--text-color, #ffffff)' : '#ffffff'};
               border-radius: 6px;
@@ -152,7 +152,7 @@
             <button id="prodModeBtn" style="
               flex: 1;
               padding: 0.75rem;
-              background: ${!currentMode ? 'var(--tertiary-bg, #2c2c2c)' : 'linear-gradient(135deg, #3bb389, #329a75)'};
+              background: ${!currentMode ? 'var(--tertiary-bg, #2c2c2c)' : '#3bb389'};
               border: 2px solid ${!currentMode ? 'var(--border-color, #3a4149)' : '#3bb389'};
               color: ${!currentMode ? 'var(--text-color, #ffffff)' : '#ffffff'};
               border-radius: 6px;
