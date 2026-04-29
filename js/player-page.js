@@ -198,9 +198,13 @@ function renderPlayerSummary() {
   if (!profile) return;
 
   const ratings = profile.rankings || {};
+  const retiredGamemodes = profile.retiredGamemodes || {};
   const ratedEntries = Object.entries(ratings)
     .filter(([, rating]) => Number(rating?.rating) > 0)
     .sort((left, right) => Number(right[1]?.rating || 0) - Number(left[1]?.rating || 0));
+  const retiredModeCount = (CONFIG.GAMEMODES || [])
+    .filter((gamemode) => gamemode.id !== 'overall' && retiredGamemodes[gamemode.id] === true)
+    .length;
   const highestMode = ratedEntries[0] || null;
   const placingModes = Object.values(ratings)
     .filter((rating) => Number(rating?.games_played || 0) > 0 && Number(rating?.rating || 0) <= 0)
@@ -224,6 +228,10 @@ function renderPlayerSummary() {
         <span class="player-summary-card__label">Placement Queues</span>
         <strong class="player-summary-card__value">${playerPageEscapeHtml(String(placingModes))}</strong>
       </div>
+      <div class="player-summary-card ${retiredModeCount ? 'player-summary-card--retired' : ''}">
+        <span class="player-summary-card__label">Retired Queues</span>
+        <strong class="player-summary-card__value">${playerPageEscapeHtml(String(retiredModeCount))}</strong>
+      </div>
       <div class="player-summary-card player-summary-card--info">
         <span class="player-summary-card__label">Overall vs individual Elo</span>
         <p>Overall Elo is broad performance across modes. Individual mode Elo is what matters for that specific queue.</p>
@@ -238,6 +246,7 @@ function renderPlayerRatings() {
 
   const ratingsGrid = document.getElementById('playerRatingsGrid');
   const ratings = profile.rankings || {};
+  const retiredGamemodes = profile.retiredGamemodes || {};
 
   ratingsGrid.innerHTML = (CONFIG.GAMEMODES || [])
     .filter((gamemode) => gamemode.id !== 'overall')
@@ -247,15 +256,18 @@ function renderPlayerRatings() {
       const peak = Number(rating?.peak_rating || 0);
       const matches = Number(rating?.games_played || 0);
       const isRated = elo > 0;
+      const isRetired = retiredGamemodes[gamemode.id] === true;
 
       return `
-        <button type="button" class="player-rating-card ${isRated ? '' : 'is-unrated'}" onclick="jumpToLeaderboardWithFilters({ gamemode: '${gamemode.id}' })">
+        <button type="button" class="player-rating-card ${isRated ? '' : 'is-unrated'} ${isRetired ? 'is-retired' : ''}" onclick="jumpToLeaderboardWithFilters({ gamemode: '${gamemode.id}' })">
           <div class="player-rating-card__top">
             <span class="player-rating-card__mode">
               <img src="${playerPageEscapeHtml(gamemode.icon)}" alt="${playerPageEscapeHtml(gamemode.name)}" class="player-rating-card__icon">
               ${playerPageEscapeHtml(gamemode.name)}
             </span>
-            <span class="player-rating-card__jump">Open leaderboard</span>
+            <span class="player-rating-card__status ${isRetired ? 'is-retired' : ''}">
+              ${isRetired ? '<i class="fas fa-lock"></i> Retired' : '<i class="fas fa-arrow-up-right-from-square"></i> Open'}
+            </span>
           </div>
           <div class="player-rating-card__elo">${isRated ? `${playerPageEscapeHtml(String(elo))} Elo` : 'Unrated'}</div>
           <div class="player-rating-card__meta">

@@ -101,7 +101,15 @@
             </div>
             <div class="card-body">
                 <div id="leaderboardContent">
-                    <div class="spinner"></div>
+                    <div class="leaderboard-loading-state" role="status" aria-live="polite">
+                        <div class="leaderboard-loading-panel">
+                            <div class="leaderboard-loading-orbit" aria-hidden="true"><div class="spinner"></div></div>
+                            <div>
+                                <div class="leaderboard-loading-title">Loading players...</div>
+                                <div class="leaderboard-loading-copy">Pulling fresh ratings, regions, and profile badges.</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -98,7 +98,7 @@ async function showLoginError(error, fallbackTitle = 'Login Failed') {
 
   let footer = '';
   if (action === 'reset_password') {
-    footer = '<a href="auth-action.html" class="auth-link-inline">Reset password</a>';
+    footer = '<a href="#" onclick="handlePasswordReset(event)" class="auth-link-inline">Reset password</a>';
   } else if (action === 'check_email_or_signup') {
     footer = '<a href="signup.html" class="auth-link-inline">Create new account</a>';
   } else if (action === 'contact_support') {

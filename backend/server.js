@@ -2069,11 +2069,104 @@ const ALLOWED_PROFILE_UPDATE_FIELDS = [
   'profilePicture',
   'onboardingCompleted',
   'retiredGamemodes',
+  'notificationSettings',
   'notificationPreferences',
   'privacySettings',
   'securitySettings',
   'stayInQueueAfterMatch',
 ];
+
+const CURRENT_USER_PROFILE_RESPONSE_FIELDS = [
+  'uid',
+  'userId',
+  'firebaseUid',
+  'email',
+  'displayName',
+  'bio',
+  'region',
+  'gamemodes',
+  'gamemodeSkillLevels',
+  'gamemodePreferences',
+  'profilePicture',
+  'minecraftUsername',
+  'minecraftUUID',
+  'minecraftVerified',
+  'onboardingCompleted',
+  'createdAt',
+  'updatedAt',
+  'lastLoginAt',
+  'stayInQueueAfterMatch',
+  'notificationSettings',
+  'notificationPreferences',
+  'privacySettings',
+  'securitySettings',
+  'plus',
+  'retiredGamemodes',
+  'retirementHistory',
+  'tester',
+  'testerSince',
+  'testerApprovedAt',
+  'pendingTesterApplication',
+  'lastApplicationSubmitted',
+  'testerApplicationDenied',
+  'testerDenialReason',
+  'admin',
+  'adminRole',
+  'staffRoleId',
+  'builtinStaffRoleIds',
+  'lastQueueJoins',
+  'lastTestCompletions',
+  'banned',
+  'banReason',
+  'banExpires'
+];
+
+function pickCurrentUserProfileFields(profile = {}) {
+  return CURRENT_USER_PROFILE_RESPONSE_FIELDS.reduce((safeProfile, field) => {
+    if (profile[field] !== undefined) {
+      safeProfile[field] = profile[field];
+    }
+    return safeProfile;
+  }, {});
+}
+
+function buildCurrentUserProfileResponse(profile = {}, {
+  user = null,
+  playerData = null,
+  moderation = {},
+  staffRole = null,
+  adminRole = null,
+  adminCapabilities = [],
+  activeWarnings = []
+} = {}) {
+  return {
+    ...pickCurrentUserProfileFields(profile),
+    uid: user?.uid || profile.uid || profile.firebaseUid || null,
+    userId: user?.uid || profile.userId || profile.firebaseUid || null,
+    firebaseUid: profile.firebaseUid || user?.uid || null,
+    email: profile.email || user?.email || null,
+    emailVerified: user?.emailVerified === true,
+    adminContext: adminRole ? {
+      role: adminRole,
+      capabilities: adminCapabilities,
+      isOwner: adminCapabilities.includes('*')
+    } : null,
+    staffRole,
+    gamemodeRatings: playerData?.gamemodeRatings || profile.gamemodeRatings || {},
+    overallRating: playerData?.overallRating ?? profile.overallRating ?? 0,
+    blacklisted: moderation.blacklisted === true,
+    warnings: activeWarnings,
+    moderation: {
+      blacklisted: moderation.blacklisted === true,
+      blacklistEntry: moderation.blacklistEntry || null,
+      restrictions: moderation.restrictions || {},
+      standing: {
+        activeWarningCount: activeWarnings.length,
+        activeRestrictionCount: Object.values(moderation.restrictions || {}).filter(r => r?.active).length
+      }
+    }
+  };
+}
 
 // ===== Authentication Middleware =====
 
@@ -2686,14 +2779,14 @@ function queueEntriesShareCompatibility(entryA = {}, entryB = {}) {
   return sharedGamemode && sharedRegion;
 }
 
-async function buildQueueStatusSummary(currentEntry = {}, currentUserId = null) {
+async function buildQueueStatusSummary(currentEntry = {}, currentUserId = null, prefetched = {}) {
   const [queueSnapshot, activeMatchesSnapshot] = await Promise.all([
-    db.ref('queue').once('value'),
-    db.ref('matches').orderByChild('status').equalTo('active').once('value')
+    prefetched.queueEntries ? null : db.ref('queue').once('value'),
+    prefetched.activeMatches ? null : db.ref('matches').orderByChild('status').equalTo('active').once('value')
   ]);
 
-  const queueEntries = queueSnapshot.val() || {};
-  const activeMatches = activeMatchesSnapshot.val() || {};
+  const queueEntries = prefetched.queueEntries || queueSnapshot?.val?.() || {};
+  const activeMatches = prefetched.activeMatches || activeMatchesSnapshot?.val?.() || {};
   const busyUserIds = new Set();
 
   Object.values(activeMatches).forEach((match) => {
@@ -4532,21 +4625,46 @@ app.get('/api/user/:userId/stream', verifyAuth, async (req, res) => {
     }
 
     // User profile changes (region, cooldowns, etc.)
-    listeners.push(dbUserRef.on('value', (snap) => {
+    listeners.push(dbUserRef.on('value', async (snap) => {
       const profile = snap.val() || {};
       latestProfile = profile;
-      sendEvent('profile', { profile });
+      try {
+        const [moderation, staffRoles] = await Promise.all([
+          getUserModerationState(userId, profile),
+          getAllStaffRoles().catch(() => ({}))
+        ]);
+        const staffRole = resolveStaffRoleForProfile(profile, staffRoles);
+        const adminRole = getAdminRole(profile, req.user.email || profile.email || '');
+        const adminCapabilities = adminRole ? getAdminCapabilities(adminRole) : [];
+        const warnings = Array.isArray(profile.warnings) ? profile.warnings : [];
+        const activeWarnings = warnings.filter(w => w && w.acknowledged !== true);
+        sendEvent('profile', {
+          profile: buildCurrentUserProfileResponse(profile, {
+            user: req.user,
+            moderation,
+            staffRole,
+            adminRole,
+            adminCapabilities,
+            activeWarnings
+          })
+        });
+      } catch (profileEventError) {
+        console.warn('Failed to sanitize realtime profile event:', profileEventError.message);
+        sendEvent('profile', { profile: pickCurrentUserProfileFields(profile) });
+      }
       emitGamemodeStats(profile.region || '');
     }));
 
-    // Queue entry detection (match entry, queue status)
-    listeners.push(dbQueueRef.orderByChild('userId').equalTo(userId).on('value', async (snap) => {
+    // Queue entry + compatible queue status. Watch all queue changes so counts/ETA
+    // update when other compatible players or testers join/leave.
+    listeners.push(dbQueueRef.on('value', async (snap) => {
       const entries = snap.val() || {};
-      const firstEntry = Object.values(entries)[0] || null;
+      const ownEntries = Object.values(entries).filter((entry) => entry?.userId === userId);
+      const firstEntry = ownEntries[0] || null;
       if (!firstEntry) {
         sendEvent('queue', { inQueue: false, queueEntry: null, queueSummary: null });
       } else {
-        const queueSummary = await buildQueueStatusSummary(firstEntry, userId).catch(() => null);
+        const queueSummary = await buildQueueStatusSummary(firstEntry, userId, { queueEntries: entries }).catch(() => null);
         sendEvent('queue', { inQueue: true, queueEntry: firstEntry, queueSummary });
       }
       emitGamemodeStats();
@@ -4574,7 +4692,7 @@ app.get('/api/user/:userId/stream', verifyAuth, async (req, res) => {
     let playerSideMatches = {};
     let testerSideMatches = {};
 
-    const emitActiveMatchState = () => {
+    const emitActiveMatchState = async () => {
       const combinedMatches = { ...playerSideMatches, ...testerSideMatches };
       const activeMatch = Object.entries(combinedMatches).find(([, match]) => (
         match && !match.finalized && match.status === 'active'
@@ -4586,7 +4704,7 @@ app.get('/api/user/:userId/stream', verifyAuth, async (req, res) => {
         const [matchId, match] = activeMatch;
         sendEvent('matchState', {
           hasMatch: true,
-          match: sanitizeMatchForClient(match, matchId)
+          match: await enrichMatchForClient(match, matchId)
         });
       }
 
@@ -4595,11 +4713,15 @@ app.get('/api/user/:userId/stream', verifyAuth, async (req, res) => {
 
     listeners.push(dbMatchesRef.orderByChild('playerId').equalTo(userId).on('value', (snap) => {
       playerSideMatches = snap.val() || {};
-      emitActiveMatchState();
+      emitActiveMatchState().catch((matchStateError) => {
+        console.warn('Failed to emit player match state:', matchStateError.message);
+      });
     }));
     listeners.push(dbMatchesRef.orderByChild('testerId').equalTo(userId).on('value', (snap) => {
       testerSideMatches = snap.val() || {};
-      emitActiveMatchState();
+      emitActiveMatchState().catch((matchStateError) => {
+        console.warn('Failed to emit tester match state:', matchStateError.message);
+      });
     }));
 
     emitGamemodeStats();
@@ -4673,29 +4795,15 @@ app.get('/api/users/me', verifyAuthAndNotBanned, async (req, res) => {
     const warnings = Array.isArray(resolvedProfile.warnings) ? resolvedProfile.warnings : [];
     const activeWarnings = warnings.filter(w => w && w.acknowledged !== true);
 
-    res.json({
-      ...resolvedProfile,
-      emailVerified: req.user?.emailVerified === true,
-      adminContext: adminRole ? {
-        role: adminRole,
-        capabilities: adminCapabilities,
-        isOwner: adminCapabilities.includes('*')
-      } : null,
+    res.json(buildCurrentUserProfileResponse(resolvedProfile, {
+      user: req.user,
+      playerData,
+      moderation,
       staffRole,
-      gamemodeRatings: playerData?.gamemodeRatings || resolvedProfile.gamemodeRatings || {},
-      overallRating: playerData?.overallRating ?? resolvedProfile.overallRating ?? 0,
-      blacklisted: moderation.blacklisted,
-      warnings: activeWarnings,
-      moderation: {
-        blacklisted: moderation.blacklisted,
-        blacklistEntry: moderation.blacklistEntry,
-        restrictions: moderation.restrictions || {},
-        standing: {
-          activeWarningCount: activeWarnings.length,
-          activeRestrictionCount: Object.values(moderation.restrictions || {}).filter(r => r?.active).length
-        }
-      }
-    });
+      adminRole,
+      adminCapabilities,
+      activeWarnings
+    }));
   } catch (error) {
     console.error('Error fetching user profile:', error);
     res.status(500).json({
@@ -4999,8 +5107,25 @@ app.put('/api/users/me', verifyAuthAndNotBanned, requireRecaptcha, async (req, r
     };
     
     await setStoredUserProfile(req.user.uid, updated);
-    
-    res.json(updated);
+
+    const [moderation, staffRoles] = await Promise.all([
+      getUserModerationState(req.user.uid, updated),
+      getAllStaffRoles().catch(() => ({}))
+    ]);
+    const staffRole = resolveStaffRoleForProfile(updated, staffRoles);
+    const adminRole = getAdminRole(updated, req.user.email || updated.email || '');
+    const adminCapabilities = adminRole ? getAdminCapabilities(adminRole) : [];
+    const warnings = Array.isArray(updated.warnings) ? updated.warnings : [];
+    const activeWarnings = warnings.filter(w => w && w.acknowledged !== true);
+
+    res.json(buildCurrentUserProfileResponse(updated, {
+      user: req.user,
+      moderation,
+      staffRole,
+      adminRole,
+      adminCapabilities,
+      activeWarnings
+    }));
   } catch (error) {
     console.error('Error updating user profile:', error);
     res.status(500).json({
@@ -5911,7 +6036,7 @@ async function buildPublicPlayerProfile(playerId, player) {
     tester: Boolean(userProfile?.tester === true)
   };
   const plus = userProfile?.plus || player.plus || null;
-  const retiredGamemodes = userProfile?.retiredGamemodes || {};
+  const retiredGamemodes = userProfile?.retiredGamemodes || player.retiredGamemodes || {};
   const isBlacklisted = Boolean(await findActiveBlacklistEntry({
     username: player.username,
     uuid: player.minecraftUUID

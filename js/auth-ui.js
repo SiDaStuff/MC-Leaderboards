@@ -53,7 +53,7 @@ const AuthUI = (() => {
 
   function buildActionFooter(action = '', actionLinks = {}) {
     const footerByAction = {
-      reset_password: '<a href="auth-action.html" class="auth-link-inline">Reset password</a>',
+      reset_password: '<a href="#" onclick="handlePasswordReset(event)" class="auth-link-inline">Reset password</a>',
       check_email_or_signup: '<a href="signup.html" class="auth-link-inline">Create new account</a>',
       contact_support: '<a href="support.html" class="auth-link-inline">Contact support</a>',
       signin: '<a href="login.html" class="auth-link-inline">Sign in instead</a>',
@@ -122,8 +122,8 @@ const AuthUI = (() => {
 
   async function runPasswordResetFlow(initialEmail = '') {
     const result = await promptForEmail({
-      title: 'Reset Password',
-      label: 'Enter your email address',
+      title: 'Forgot Password',
+      label: 'Email address',
       value: initialEmail,
       confirmButtonText: 'Send Reset Link'
     });
@@ -151,4 +151,12 @@ const AuthUI = (() => {
 
 if (typeof window !== 'undefined') {
   window.AuthUI = AuthUI;
+  window.handlePasswordReset = window.handlePasswordReset || async function handlePasswordReset(event) {
+    if (event) event.preventDefault();
+    try {
+      await AuthUI.runPasswordResetFlow(document.getElementById('email')?.value?.trim() || '');
+    } catch (error) {
+      await AuthUI.showActionError(error, { fallbackTitle: 'Password Reset Failed' });
+    }
+  };
 }

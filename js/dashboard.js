@@ -17,6 +17,7 @@ let joinQueueButtonInterval = null;
 const seenNotificationIds = new Set();
 const MAX_SEEN_NOTIFICATIONS = 500;
 const DASHBOARD_ACTIVE_MATCH_POLL_MS = 5000;
+const DASHBOARD_QUEUE_FALLBACK_POLL_MS = 7000;
 
 const DASHBOARD_ADMIN_CAPABILITY_MATRIX = {
   owner: ['*'],
@@ -242,7 +243,6 @@ async function initDashboard() {
   // Start cooldown timer updates
   startCooldownTimers();
   startDashboardSSE();
-  startActiveMatchPolling();
 
   // Security hardening: avoid broad client-side Firebase reads (queue/matches/users).
   // Use backend endpoints only for dashboard state and polling.
@@ -1019,6 +1019,7 @@ let dashboardEventSource = null;
 let gamemodeStatsRefreshTimeout = null;
 let dashboardRealtimeRefreshTimeout = null;
 let dashboardSseRetryTimeout = null;
+let dashboardSseConnected = false;
 
 function scheduleDashboardRealtimeRefresh({
   profile = false,
@@ -1106,12 +1107,8 @@ function startDashboardSSE() {
           loadSharedQueueSettings();
         }
         scheduleDashboardRealtimeRefresh({
-          profile: true,
-          queue: true,
-          activeMatch: true,
           warnings: true,
           cooldowns: true,
-          recentMatches: true,
           sharedQueueSettings: true
         });
       }
@@ -1121,11 +1118,6 @@ function startDashboardSSE() {
     if (eventName === 'queue') {
       updateQueueUI(data);
       scheduleDashboardRealtimeRefresh({
-        profile: true,
-        queue: true,
-        activeMatch: true,
-        recentMatches: true,
-        sharedQueueSettings: true,
         cooldowns: true
       });
       return;
@@ -1135,8 +1127,6 @@ function startDashboardSSE() {
       updateMatchesUI(data);
       scheduleDashboardRealtimeRefresh({
         profile: true,
-        queue: true,
-        activeMatch: true,
         warnings: true,
         cooldowns: true,
         recentMatches: true,
@@ -1175,6 +1165,9 @@ function startDashboardSSE() {
     const connection = window.MCLBRealtimeStream.connect({
       url: sseUrl,
       onOpen: () => {
+        dashboardSseConnected = true;
+        stopQueueStatusPolling();
+        stopActiveMatchPolling();
         console.log('Dashboard SSE connected');
       },
       onEvent: (eventName, data) => {
@@ -1182,7 +1175,9 @@ function startDashboardSSE() {
         handleEvent(eventName, data || {});
       },
       onError: (error) => {
+        dashboardSseConnected = false;
         console.warn('Dashboard SSE error', error);
+        startQueueStatusPolling();
         startActiveMatchPolling();
       }
     });
@@ -1197,11 +1192,19 @@ function startDashboardSSE() {
   dashboardEventSource = evtSource;
 
   evtSource.onopen = () => {
+    dashboardSseConnected = true;
+    stopQueueStatusPolling();
+    stopActiveMatchPolling();
     console.log('Dashboard SSE connected');
   };
   evtSource.onerror = (e) => {
+    dashboardSseConnected = false;
     console.warn('Dashboard SSE error', e);
-    dashboardEventSource = null;
+    if (evtSource.readyState === EventSource.CLOSED) {
+      dashboardEventSource = null;
+    }
+    startQueueStatusPolling();
+    startActiveMatchPolling();
   };
 
   ['profile', 'queue', 'matchState', 'notifications', 'inboxUnreadCount', 'gamemodeStats', 'onboarding', 'ping'].forEach((eventName) => {
@@ -1241,6 +1244,24 @@ function updateQueueUI(queueState) {
 
 function updateMatchesUI(matchState) {
   checkActiveMatch(matchState);
+}
+
+function startQueueStatusPolling() {
+  if (queueCheckInterval || dashboardSseConnected) return;
+
+  queueCheckInterval = setInterval(() => {
+    if (document.visibilityState !== 'visible' || dashboardSseConnected) {
+      return;
+    }
+    checkQueueStatus();
+  }, DASHBOARD_QUEUE_FALLBACK_POLL_MS);
+}
+
+function stopQueueStatusPolling() {
+  if (queueCheckInterval) {
+    clearInterval(queueCheckInterval);
+    queueCheckInterval = null;
+  }
 }
 
 function handleRealtimeNotifications(notifications) {
@@ -2095,6 +2116,13 @@ function startActiveMatchPolling() {
     }
     checkActiveMatch();
   }, DASHBOARD_ACTIVE_MATCH_POLL_MS);
+}
+
+function stopActiveMatchPolling() {
+  if (activeMatchPollInterval) {
+    clearInterval(activeMatchPollInterval);
+    activeMatchPollInterval = null;
+  }
 }
 
 /**

@@ -723,6 +723,35 @@ function renderLoadMoreIndicator(mode = 'idle', remainingMs = 0) {
   }
 }
 
+function renderLeaderboardLoadingState(message = 'Loading players...') {
+  return `
+    <div class="leaderboard-loading-state" role="status" aria-live="polite">
+      <div class="leaderboard-loading-panel">
+        <div class="leaderboard-loading-orbit" aria-hidden="true">
+          <div class="spinner"></div>
+        </div>
+        <div>
+          <div class="leaderboard-loading-title">${escapeHtml(message)}</div>
+          <div class="leaderboard-loading-copy">Pulling fresh ratings, regions, and profile badges.</div>
+        </div>
+      </div>
+      <div class="leaderboard-loading-skeletons" aria-hidden="true">
+        ${Array.from({ length: 4 }).map((_, index) => `
+          <div class="leaderboard-skeleton-row" style="--delay:${index * 90}ms">
+            <div class="leaderboard-skeleton-rank"></div>
+            <div class="leaderboard-skeleton-avatar"></div>
+            <div class="leaderboard-skeleton-lines">
+              <div class="leaderboard-skeleton-line is-wide"></div>
+              <div class="leaderboard-skeleton-line"></div>
+            </div>
+            <div class="leaderboard-skeleton-score"></div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+
 /**
  * Render gamemode tabs
  */
@@ -760,7 +789,13 @@ function showLoadingOverlay() {
   const overlay = document.createElement('div');
   overlay.className = 'loading-overlay';
   overlay.id = 'leaderboardLoadingOverlay';
-  overlay.innerHTML = '<div class="spinner"></div>';
+  overlay.innerHTML = `
+    <div class="loading-overlay__panel">
+      <div class="spinner"></div>
+      <div class="loading-overlay__title">Loading players</div>
+      <div class="loading-overlay__copy">Refreshing this leaderboard.</div>
+    </div>
+  `;
   document.body.appendChild(overlay);
 }
 
@@ -1013,7 +1048,7 @@ function renderLeaderboard() {
   if (!content) return;
 
   if (AppState.loading.players) {
-    content.innerHTML = '<div class="spinner"></div>';
+    content.innerHTML = renderLeaderboardLoadingState();
     return;
   }
 
@@ -1265,7 +1300,7 @@ async function openPlayerModal(player) {
 
   // Show loading state immediately
   modalTitle.textContent = 'Loading...';
-  modalBody.innerHTML = '<div style="text-align: center; padding: 3rem;"><div class="spinner"></div><p style="margin-top: 1rem; color: var(--text-muted);">Loading player data...</p></div>';
+  modalBody.innerHTML = renderLeaderboardLoadingState('Loading player data...');
   modal.style.display = 'flex';
 
   // Handle if player is passed as string (from onclick)
