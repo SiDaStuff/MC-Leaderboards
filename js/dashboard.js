@@ -1517,6 +1517,31 @@ async function loadUserProfile() {
 // Cooldown tracking for buttons
 let joinQueueCooldownUntil = 0;
 
+async function confirmAutoRequeuePreferenceBeforeJoin() {
+  const profile = AppState.getProfile?.() || AppState.userProfile || {};
+  const result = await Swal.fire({
+    icon: 'question',
+    title: 'Auto-Rejoin After Match?',
+    text: 'After this match is finalized, do you want to automatically join the queue again?',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, rejoin',
+    cancelButtonText: 'No, leave queue',
+    reverseButtons: true
+  });
+
+  const stayInQueueAfterMatch = result.isConfirmed === true;
+  await apiService.updateProfile({ stayInQueueAfterMatch });
+  AppState.setProfile({
+    ...profile,
+    stayInQueueAfterMatch
+  });
+
+  const stayInQueueCheckbox = document.getElementById('stayInQueueAfterMatch');
+  if (stayInQueueCheckbox) {
+    stayInQueueCheckbox.checked = stayInQueueAfterMatch;
+  }
+}
+
 /**
  * Handle join queue
  */
@@ -1582,19 +1607,23 @@ async function handleJoinQueue(event) {
     }
   }
 
+  try {
+    await confirmAutoRequeuePreferenceBeforeJoin();
+  } catch (error) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Could Not Save Preference',
+      text: error.message || 'Please try joining the queue again.'
+    });
+    return;
+  }
+
   joinBtn.disabled = true;
   joinBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${tierTester ? 'Joining as tester...' : 'Joining...'}`;
 
   try {
     if (tierTester) {
       const availabilityResponse = await apiService.setTesterAvailability(true, gamemodes, regions, serverIP);
-
-      const stayInQueueCheckbox = document.getElementById('stayInQueueAfterMatch');
-      if (stayInQueueCheckbox) {
-        await apiService.updateProfile({
-          stayInQueueAfterMatch: stayInQueueCheckbox.checked
-        });
-      }
 
       if (availabilityResponse?.matched && availabilityResponse.matchId) {
         window.location.href = `testing.html?matchId=${encodeURIComponent(availabilityResponse.matchId)}`;

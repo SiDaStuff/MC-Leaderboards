@@ -214,14 +214,7 @@ async function requireAuth(requireAdmin = false, requireTierTester = false) {
   if (requireAdmin && !AppState.isAdmin()) {
     if (!redirectInProgress) {
       redirectInProgress = true;
-      Swal.fire({
-        icon: 'error',
-        title: 'Access Denied',
-        text: 'You must be an admin to access this page.',
-        confirmButtonText: 'Go to Dashboard'
-      }).then(() => {
-        window.location.href = 'dashboard.html';
-      });
+      window.location.replace('dashboard.html');
     }
     return false;
   }
