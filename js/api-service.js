@@ -117,6 +117,10 @@ class ApiService {
   }
 
   async getRecaptchaToken(action = 'submit') {
+    if (this.hasRecentRecaptchaVerification()) {
+      return '';
+    }
+
     const recaptchaService = await this.ensureRecaptchaServiceLoaded();
     if (!recaptchaService || typeof recaptchaService.getToken !== 'function') {
       throw new Error('reCAPTCHA service is unavailable right now.');
@@ -126,6 +130,27 @@ class ApiService {
   }
 
   hasRecentRecaptchaVerification() {
+    if (typeof window !== 'undefined') {
+      try {
+        const trustedUntil = Number(window.localStorage.getItem('mclb_recaptcha_verified_until') || 0);
+        if (Number.isFinite(trustedUntil) && trustedUntil > Date.now()) {
+          return true;
+        }
+      } catch (_error) {}
+
+      const cookieMatch = document.cookie.match(/(?:^|;\s*)mclb_recaptcha_trust=([^;]+)/);
+      if (cookieMatch) {
+        const cookieValue = decodeURIComponent(cookieMatch[1] || '');
+        const trustedUntil = Number(cookieValue.split('.')[0]);
+        if (Number.isFinite(trustedUntil) && trustedUntil > Date.now()) {
+          try {
+            window.localStorage.setItem('mclb_recaptcha_verified_until', String(trustedUntil));
+          } catch (_error) {}
+          return true;
+        }
+      }
+    }
+
     return Boolean(
       typeof window !== 'undefined'
       && window.RecaptchaService
@@ -278,7 +303,8 @@ class ApiService {
     const config = {
       ...requestOptions,
       headers,
-      signal: controller.signal
+      signal: controller.signal,
+      credentials: requestOptions.credentials || 'include'
     };
 
     const shouldProtectWithRecaptcha = this.shouldAttachRecaptcha(endpoint, method);
@@ -350,6 +376,13 @@ class ApiService {
 
           if (attachedRecaptchaToken && response.ok) {
             this.markRecentRecaptchaVerification();
+          }
+          const trustedUntilHeader = response.headers.get('x-recaptcha-trusted-until');
+          const trustedUntil = Number(trustedUntilHeader || 0);
+          if (Number.isFinite(trustedUntil) && trustedUntil > Date.now()) {
+            try {
+              window.localStorage.setItem('mclb_recaptcha_verified_until', String(trustedUntil));
+            } catch (_error) {}
           }
               } else if (rateLimitReset) {
                 const resetSeconds = Number(rateLimitReset);

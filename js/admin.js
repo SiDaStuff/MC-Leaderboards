@@ -139,7 +139,8 @@ function clientStaffHasCapability(capability) {
 }
 
 function canAccessAdminPanel() {
-  return AppState.isAdmin() || getClientStaffCapabilities().length > 0;
+  const profile = AppState.getProfile?.() || AppState.userProfile || {};
+  return profile?.admin === true || typeof profile?.adminRole === 'string';
 }
 
 function isAdminTabVisible(tab) {

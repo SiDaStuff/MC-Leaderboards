@@ -21,6 +21,7 @@ async function preflightSignup({ age, clientIP = null } = {}) {
   const recaptchaToken = await apiService.getRecaptchaToken(recaptchaAction);
   const response = await fetch('/api/auth/register-preflight', {
     method: 'POST',
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       'X-Recaptcha-Token': recaptchaToken,
@@ -261,6 +262,7 @@ window.handleSignup = async function handleSignup(event) {
 
     const response = await fetch('/api/auth/register', {
       method: 'POST',
+      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiService.getToken()}`,

@@ -16,10 +16,26 @@ const RECAPTCHA_TRUST_WINDOW_MS = 24 * 60 * 60 * 1000;
 function getTrustExpiryMs() {
   try {
     const storedValue = Number(window.localStorage.getItem(RECAPTCHA_TRUST_KEY) || 0);
-    return Number.isFinite(storedValue) ? storedValue : 0;
+    if (Number.isFinite(storedValue) && storedValue > Date.now()) {
+      return storedValue;
+    }
   } catch (_error) {
-    return 0;
+    // fall through to cookie check
   }
+
+  try {
+    const cookieMatch = document.cookie.match(/(?:^|;\s*)mclb_recaptcha_trust=([^;]+)/);
+    if (cookieMatch) {
+      const cookieValue = decodeURIComponent(cookieMatch[1] || '');
+      const cookieExpiry = Number(cookieValue.split('.')[0]);
+      if (Number.isFinite(cookieExpiry) && cookieExpiry > Date.now()) {
+        window.localStorage.setItem(RECAPTCHA_TRUST_KEY, String(cookieExpiry));
+        return cookieExpiry;
+      }
+    }
+  } catch (_error) {}
+
+  return 0;
 }
 
 function persistTrustExpiry(expiryMs) {
@@ -76,6 +92,7 @@ function hideVerificationOverlay() {
  * Initialize reCAPTCHA service
  */
 function initRecaptchaService() {
+  if (hasRecentVerification()) return;
   if (recaptchaLoaded || recaptchaLoading) return;
   
   recaptchaLoading = true;
@@ -208,6 +225,10 @@ function waitForRecaptcha() {
  */
 async function getRecaptchaToken(action = 'submit') {
   try {
+    if (hasRecentVerification()) {
+      return '';
+    }
+
     showVerificationOverlay();
     
     // Wait for reCAPTCHA to be ready (with retry logic)
@@ -324,4 +345,3 @@ if (typeof window !== 'undefined') {
     initRecaptchaService();
   }
 }
-

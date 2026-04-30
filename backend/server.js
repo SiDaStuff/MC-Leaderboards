@@ -10,6 +10,7 @@ const slowDown = require('express-slow-down');
 const compression = require('compression');
 const https = require('https');
 const util = require('util');
+const crypto = require('crypto');
 
 // Initialize Firebase Admin
 const admin = require('firebase-admin');
@@ -74,6 +75,49 @@ try {
 
 const { serviceAccount, config, credentialsSource } = runtimeConfig;
 const PLUGIN_API_KEY = config.pluginApiKey;
+const RECAPTCHA_TRUST_COOKIE = 'mclb_recaptcha_trust';
+const RECAPTCHA_TRUST_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+function getRecaptchaTrustSecret() {
+  return String(config.recaptchaSecretKey || config.jwtSecret || 'mclb-recaptcha-trust-development-secret');
+}
+
+function signRecaptchaTrustExpiry(expiresAtMs) {
+  return crypto
+    .createHmac('sha256', getRecaptchaTrustSecret())
+    .update(String(expiresAtMs))
+    .digest('base64url');
+}
+
+function buildRecaptchaTrustCookieValue(expiresAtMs) {
+  return `${expiresAtMs}.${signRecaptchaTrustExpiry(expiresAtMs)}`;
+}
+
+function getTrustedRecaptchaExpiry(req) {
+  const value = String(parseRequestCookies(req)[RECAPTCHA_TRUST_COOKIE] || '').trim();
+  const [expiresRaw, signature] = value.split('.');
+  const expiresAtMs = Number(expiresRaw);
+  if (!Number.isFinite(expiresAtMs) || !signature || expiresAtMs <= Date.now()) {
+    return 0;
+  }
+
+  const expectedSignature = signRecaptchaTrustExpiry(expiresAtMs);
+  const left = Buffer.from(signature);
+  const right = Buffer.from(expectedSignature);
+  if (left.length !== right.length || !crypto.timingSafeEqual(left, right)) {
+    return 0;
+  }
+  return expiresAtMs;
+}
+
+function setRecaptchaTrustCookie(res) {
+  const expiresAtMs = Date.now() + RECAPTCHA_TRUST_WINDOW_MS;
+  const cookieValue = buildRecaptchaTrustCookieValue(expiresAtMs);
+  const maxAge = Math.floor(RECAPTCHA_TRUST_WINDOW_MS / 1000);
+  const secure = config.nodeEnv === 'production' ? '; Secure' : '';
+  res.append('Set-Cookie', `${RECAPTCHA_TRUST_COOKIE}=${encodeURIComponent(cookieValue)}; Max-Age=${maxAge}; Path=/; SameSite=Lax${secure}`);
+  res.setHeader('X-Recaptcha-Trusted-Until', String(expiresAtMs));
+}
 
 function formatLegacyLogArgs(args) {
   return args.map((value) => {
@@ -2070,7 +2114,7 @@ function getAdminCapabilities(role) {
 
 function resolveStaffAdminContext(staffRole = null) {
   const capabilities = Array.isArray(staffRole?.adminCapabilities) ? staffRole.adminCapabilities : [];
-  if (!staffRole?.adminRole || !capabilities.length) return null;
+  if (!capabilities.length) return null;
   return {
     role: staffRole.adminRole || staffRole.primaryRoleId || staffRole.id || 'staff',
     capabilities
@@ -2562,6 +2606,17 @@ async function requireRecaptcha(req, res, next) {
     return next();
   }
 
+  const trustedUntil = getTrustedRecaptchaExpiry(req);
+  if (trustedUntil > Date.now()) {
+    req.recaptcha = {
+      action: 'trusted_cookie',
+      score: null,
+      hostname: null,
+      trustedUntil
+    };
+    return next();
+  }
+
   const { token, action } = getRecaptchaVerificationInput(req);
   if (!token) {
     return res.status(400).json({
@@ -2625,6 +2680,7 @@ async function requireRecaptcha(req, res, next) {
       score: Number.isFinite(score) ? score : null,
       hostname: verification?.hostname || null
     };
+    setRecaptchaTrustCookie(res);
     return next();
   } catch (error) {
     logger.error('reCAPTCHA verification failed unexpectedly', {
@@ -4898,10 +4954,8 @@ app.get('/api/users/me', verifyAuthAndNotBanned, async (req, res) => {
       getAllStaffRoles().catch(() => ({}))
     ]);
     const staffRole = resolveStaffRoleForProfile(resolvedProfile, staffRoles);
-    const nativeAdminRole = getAdminRole(resolvedProfile, req.user.email || resolvedProfile.email || '');
-    const staffAdminContext = resolveStaffAdminContext(staffRole);
-    const adminRole = nativeAdminRole || staffAdminContext?.role || null;
-    const adminCapabilities = nativeAdminRole ? getAdminCapabilities(nativeAdminRole) : (staffAdminContext?.capabilities || []);
+    const adminRole = getAdminRole(resolvedProfile, req.user.email || resolvedProfile.email || '');
+    const adminCapabilities = adminRole ? getAdminCapabilities(adminRole) : [];
     const warnings = Array.isArray(resolvedProfile.warnings) ? resolvedProfile.warnings : [];
     const activeWarnings = warnings.filter(w => w && w.acknowledged !== true);
 
@@ -5223,10 +5277,8 @@ app.put('/api/users/me', verifyAuthAndNotBanned, requireRecaptcha, async (req, r
       getAllStaffRoles().catch(() => ({}))
     ]);
     const staffRole = resolveStaffRoleForProfile(updated, staffRoles);
-    const nativeAdminRole = getAdminRole(updated, req.user.email || updated.email || '');
-    const staffAdminContext = resolveStaffAdminContext(staffRole);
-    const adminRole = nativeAdminRole || staffAdminContext?.role || null;
-    const adminCapabilities = nativeAdminRole ? getAdminCapabilities(nativeAdminRole) : (staffAdminContext?.capabilities || []);
+    const adminRole = getAdminRole(updated, req.user.email || updated.email || '');
+    const adminCapabilities = adminRole ? getAdminCapabilities(adminRole) : [];
     const warnings = Array.isArray(updated.warnings) ? updated.warnings : [];
     const activeWarnings = warnings.filter(w => w && w.acknowledged !== true);
 

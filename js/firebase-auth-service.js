@@ -689,6 +689,7 @@ const firebaseAuthService = {
 
       const resp = await fetch('/api/auth/register', {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,

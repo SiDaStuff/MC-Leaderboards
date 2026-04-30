@@ -2022,7 +2022,7 @@
             };
 
             await waitForAuth();
-            const authenticated = await requireAuth(true, false);
+            const authenticated = await requireAuth(false, false);
             if (!authenticated) return; // Redirected to login or dashboard
 
             // Initialize admin panel after authentication

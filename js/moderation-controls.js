@@ -47,7 +47,11 @@ function moderationHasAccess() {
 
 function getModerationAdminCapabilities() {
   const profile = getModerationProfile();
-  const capabilities = Array.isArray(profile?.adminContext?.capabilities) ? profile.adminContext.capabilities : [];
+  const capabilities = [
+    ...(Array.isArray(profile?.adminContext?.capabilities) ? profile.adminContext.capabilities : []),
+    ...(Array.isArray(profile?.staffRole?.adminCapabilities) ? profile.staffRole.adminCapabilities : []),
+    ...(Array.isArray(profile?.verifiedStaffRole?.adminCapabilities) ? profile.verifiedStaffRole.adminCapabilities : [])
+  ];
   return new Set(capabilities);
 }
 
