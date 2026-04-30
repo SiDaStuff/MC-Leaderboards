@@ -3327,6 +3327,10 @@ kbd {
   color: #facc15;
 }
 
+.role-icon-badge--senior-moderator {
+  color: #ef4444;
+}
+
 .role-icon-badge--leaderboard-moderator {
   color: #60a5fa;
 }

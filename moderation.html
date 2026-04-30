@@ -57,6 +57,36 @@
             </div>
         </section>
 
+        <section class="card moderation-card-shell" id="contactAdminsCard">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i class="fas fa-inbox"></i> Contact Admins
+                </h2>
+            </div>
+            <div class="card-body moderation-card-body">
+                <form id="contactAdminsForm" onsubmit="submitContactAdmins(event)">
+                    <div class="form-group">
+                        <label class="form-label" for="contactAdminsMessage">Message</label>
+                        <textarea class="form-input" id="contactAdminsMessage" rows="4" maxlength="2000" required placeholder="Type a concise request for the admin team."></textarea>
+                    </div>
+                    <button class="btn btn-primary" type="submit" id="contactAdminsBtn">
+                        <i class="fas fa-paper-plane"></i> Send Request
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <section class="card moderation-card-shell" id="staffAdminShortcutsCard">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i class="fas fa-briefcase"></i> Staff Tools
+                </h2>
+            </div>
+            <div class="card-body moderation-card-body">
+                <div class="moderation-shortcut-grid" id="staffAdminShortcutsGrid"></div>
+            </div>
+        </section>
+
         <section class="moderation-grid">
             <div class="card moderation-card-shell" id="moderationChatCard">
                 <div class="card-header" style="background: linear-gradient(135deg, #1f2937, #111827); color: white; border: none;">
@@ -161,10 +191,10 @@
 
     <script src="js/config.js" defer></script>
     <script src="js/dev-mode-toggle.js" defer></script>
-    <script src="js/utils.js" defer></script>
+    <script src="js/utils.js?v=20260430" defer></script>
     <script src="js/firebase-service.js" defer></script>
     <script src="js/app-state.js" defer></script>
-    <script src="js/api-service.js" defer></script>
+    <script src="js/api-service.js?v=20260430" defer></script>
     <script src="js/global-error-handler.js" defer></script>
     <script src="js/player-search.js" defer></script>
     <script src="js/firebase-auth-service.js" defer></script>
@@ -172,6 +202,6 @@
     <script src="js/navigation.js" defer></script>
     <script src="js/ui-enhancements.js" defer></script>
     <script src="js/auth-ui.js" defer></script>
-    <script src="js/moderation-controls.js" defer></script>
+    <script src="js/moderation-controls.js?v=20260430" defer></script>
 </body>
 </html>

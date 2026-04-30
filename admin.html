@@ -111,6 +111,9 @@
                     <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('punish')" id="tab-punish">
                         <i class="fas fa-skull-crossbones"></i> Punish
                     </button>
+                    <button class="btn btn-secondary col-6 col-md-3" onclick="switchTab('admin-requests')" id="tab-admin-requests">
+                        <i class="fas fa-inbox"></i> Admin Requests
+                    </button>
                 </div>
             </div>
         </div>
@@ -147,27 +150,33 @@
                 </div>
                 <div class="card-body">
                     <div id="rolesEditorSummary" class="empty-state">
-                        <p class="text-muted">Load a user to edit Tier Tester, Leaderboard Mod, and Moderator access.</p>
+                        <p class="text-muted">Load a user to edit Tier Tester, Leaderboard Mod, Moderator, and Senior Moderator access.</p>
                     </div>
                     <form id="rolesEditorForm" onsubmit="saveRolesEditor(event)" class="d-none">
                         <input type="hidden" id="rolesEditorUserId" value="">
                         <div class="row">
-                            <div class="col-12 col-md-4">
+                            <div class="col-12 col-md-3">
                                 <label class="staff-role-action-option">
                                     <input type="checkbox" id="rolesEditorTierTester">
                                     <span><i class="fas fa-check"></i> Tier Tester</span>
                                 </label>
                             </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-12 col-md-3">
                                 <label class="staff-role-action-option">
                                     <input type="checkbox" id="rolesEditorLeaderboardModerator">
                                     <span><i class="fas fa-filter"></i> Leaderboard Mod</span>
                                 </label>
                             </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-12 col-md-3">
                                 <label class="staff-role-action-option">
                                     <input type="checkbox" id="rolesEditorModerator">
                                     <span><i class="fas fa-shield-alt"></i> Moderator</span>
+                                </label>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <label class="staff-role-action-option">
+                                    <input type="checkbox" id="rolesEditorSeniorModerator">
+                                    <span><i class="fas fa-shield-alt" style="color:#ef4444;"></i> Senior Moderator</span>
                                 </label>
                             </div>
                         </div>
@@ -1659,6 +1668,35 @@
             </div>
         </div>
 
+        <div id="admin-requestsTab" class="tab-content d-none">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2 class="card-title"><i class="fas fa-inbox"></i> Moderator Requests</h2>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label" for="moderatorAdminRequestsStatusFilter">Status</label>
+                            <select class="form-input" id="moderatorAdminRequestsStatusFilter" onchange="loadModeratorAdminRequests()">
+                                <option value="open">Open</option>
+                                <option value="reviewed">Reviewed</option>
+                                <option value="closed">Closed</option>
+                                <option value="all">All</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-2" style="display:flex; align-items:flex-end;">
+                            <button class="btn btn-primary" type="button" onclick="loadModeratorAdminRequests()" style="width:100%;">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                    <div id="moderatorAdminRequestsList">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Punish Tab -->
         <div id="punishTab" class="tab-content d-none">
             <div class="card mb-4">
@@ -1951,10 +1989,10 @@
     <!-- Scripts -->
     <script src="js/config.js" defer></script>
     <script src="js/dev-mode-toggle.js" defer></script>
-    <script src="js/utils.js" defer></script>
+    <script src="js/utils.js?v=20260430" defer></script>
     <script src="js/firebase-service.js" defer></script>
     <script src="js/app-state.js" defer></script>
-    <script src="js/api-service.js?v=20260128" defer></script>
+    <script src="js/api-service.js?v=20260430" defer></script>
     <script src="js/global-error-handler.js" defer></script>
     <script src="js/player-search.js" defer></script>
     <script src="js/firebase-auth-service.js" defer></script>
@@ -1962,7 +2000,7 @@
     <script src="js/navigation.js" defer></script>
     <script src="js/ui-enhancements.js" defer></script>
     <script src="js/testing.js" defer></script>
-    <script src="js/admin.js?v=20260128" defer></script>
+    <script src="js/admin.js?v=20260430" defer></script>
     <script>
         // Verify authentication and admin status BEFORE anything else
         // Wait for deferred scripts to load

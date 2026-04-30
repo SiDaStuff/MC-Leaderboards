@@ -24,28 +24,30 @@ const adminUiState = {
 const CLIENT_ADMIN_CAPABILITY_MATRIX = {
   owner: ['*'],
   lead_admin: ['users:view', 'users:manage', 'blacklist:view', 'blacklist:manage', 'audit:view', 'matches:view', 'matches:manage', 'reports:manage', 'disputes:manage', 'queue:inspect', 'settings:manage'],
-  moderator: ['users:view', 'blacklist:view', 'blacklist:manage', 'audit:view', 'matches:view', 'reports:manage', 'disputes:manage'],
+  moderator: ['users:view', 'blacklist:view', 'blacklist:manage', 'audit:view', 'matches:view', 'reports:manage', 'disputes:manage', 'messages:send', 'security_scores:view', 'applications:manage'],
+  senior_moderator: ['users:view', 'blacklist:view', 'blacklist:manage', 'audit:view', 'matches:view', 'reports:manage', 'disputes:manage', 'messages:send', 'security_scores:view', 'applications:manage', 'bans:manage'],
   support: ['users:view', 'audit:view', 'matches:view']
 };
 
 const ADMIN_TAB_REQUIREMENTS = {
   management: ['users:view'],
-  moderation: ['blacklist:view'],
+  moderation: ['blacklist:view', 'applications:manage'],
   reported: ['reports:manage'],
   support: ['users:view'],
   'ban-waves': ['blacklist:manage'],
-  banned: ['users:manage'],
+  banned: ['users:manage', 'bans:manage'],
   testing: ['matches:view'],
   ratings: ['users:manage'],
   audit: ['audit:view'],
   servers: ['settings:manage'],
   matches: ['matches:view'],
   operations: ['matches:view'],
-  'security-scores': ['audit:view'],
+  'security-scores': ['audit:view', 'security_scores:view'],
   roles: ['users:manage'],
   'resolve': ['blacklist:manage'],
-  'send-message': ['users:manage'],
-  'punish': ['blacklist:manage']
+  'send-message': ['users:manage', 'messages:send'],
+  'punish': ['blacklist:manage'],
+  'admin-requests': ['settings:manage']
 };
 
 const STAFF_ADMIN_PANEL_TAB_REQUIREMENTS = {
@@ -316,6 +318,8 @@ function switchTab(tab) {
     loadSupportTickets();
   } else if (tab === 'punish') {
     initPunishTab();
+  } else if (tab === 'admin-requests') {
+    loadModeratorAdminRequests();
   }
 
 }
@@ -519,12 +523,12 @@ window.resetStaffRoleForm = resetStaffRoleForm;
 function getBuiltinRoleIdsForUser(user = {}) {
   const roleIds = new Set();
   const legacyRoleId = String(user?.staffRoleId || '').trim();
-  if (legacyRoleId === 'moderator' || legacyRoleId === 'leaderboard-moderator') {
+  if (legacyRoleId === 'moderator' || legacyRoleId === 'leaderboard-moderator' || legacyRoleId === 'senior-moderator') {
     roleIds.add(legacyRoleId);
   }
   (Array.isArray(user?.builtinStaffRoleIds) ? user.builtinStaffRoleIds : []).forEach((roleId) => {
     const normalizedRoleId = String(roleId || '').trim();
-    if (normalizedRoleId === 'moderator' || normalizedRoleId === 'leaderboard-moderator') {
+    if (normalizedRoleId === 'moderator' || normalizedRoleId === 'leaderboard-moderator' || normalizedRoleId === 'senior-moderator') {
       roleIds.add(normalizedRoleId);
     }
   });
@@ -539,14 +543,16 @@ function resetRolesEditor() {
   const tierTesterInput = document.getElementById('rolesEditorTierTester');
   const leaderboardInput = document.getElementById('rolesEditorLeaderboardModerator');
   const moderatorInput = document.getElementById('rolesEditorModerator');
+  const seniorModeratorInput = document.getElementById('rolesEditorSeniorModerator');
 
   if (userIdInput) userIdInput.value = '';
   if (tierTesterInput) tierTesterInput.checked = false;
   if (leaderboardInput) leaderboardInput.checked = false;
   if (moderatorInput) moderatorInput.checked = false;
+  if (seniorModeratorInput) seniorModeratorInput.checked = false;
   if (form) form.classList.add('d-none');
   if (summary) {
-    summary.innerHTML = '<p class="text-muted">Load a user to edit Tier Tester, Leaderboard Mod, and Moderator access.</p>';
+    summary.innerHTML = '<p class="text-muted">Load a user to edit Tier Tester, Leaderboard Mod, Moderator, and Senior Moderator access.</p>';
   }
 }
 
@@ -570,6 +576,7 @@ function renderRolesEditorUser(user = {}, searchTerm = '') {
   const tierTesterInput = document.getElementById('rolesEditorTierTester');
   const leaderboardInput = document.getElementById('rolesEditorLeaderboardModerator');
   const moderatorInput = document.getElementById('rolesEditorModerator');
+  const seniorModeratorInput = document.getElementById('rolesEditorSeniorModerator');
   const builtinRoleIds = getBuiltinRoleIdsForUser(user);
   const hasCustomStaffRole = Boolean(user?.staffRoleId) && !builtinRoleIds.includes(String(user.staffRoleId));
   const summaryBadges = [];
@@ -582,6 +589,9 @@ function renderRolesEditorUser(user = {}, searchTerm = '') {
     }
     if (builtinRoleIds.includes('moderator')) {
       summaryBadges.push(buildStaticRoleBadge('Moderator', 'moderator', '<i class="fas fa-shield-alt"></i>'));
+    }
+    if (builtinRoleIds.includes('senior-moderator')) {
+      summaryBadges.push(buildStaticRoleBadge('Senior Moderator', 'senior-moderator', '<i class="fas fa-shield-alt"></i>'));
     }
   }
 
@@ -612,6 +622,7 @@ function renderRolesEditorUser(user = {}, searchTerm = '') {
   if (tierTesterInput) tierTesterInput.checked = user?.tester === true || user?.tierTester === true;
   if (leaderboardInput) leaderboardInput.checked = builtinRoleIds.includes('leaderboard-moderator');
   if (moderatorInput) moderatorInput.checked = builtinRoleIds.includes('moderator');
+  if (seniorModeratorInput) seniorModeratorInput.checked = builtinRoleIds.includes('senior-moderator');
   if (form) form.classList.remove('d-none');
 }
 
@@ -667,6 +678,9 @@ async function saveRolesEditor(event) {
   }
   if (document.getElementById('rolesEditorModerator')?.checked === true) {
     builtinRoleIds.push('moderator');
+  }
+  if (document.getElementById('rolesEditorSeniorModerator')?.checked === true) {
+    builtinRoleIds.push('senior-moderator');
   }
 
   try {
@@ -2819,8 +2833,11 @@ function adminCanManageLeaderboardFilters() {
 
 function getVisibleModerationTabs() {
   const visibleTabs = [];
+  if (clientAdminHasCapability('applications:manage') || clientAdminHasCapability('blacklist:view')) {
+    visibleTabs.push('tester');
+  }
   if (clientAdminHasCapability('blacklist:view')) {
-    visibleTabs.push('tester', 'blacklist');
+    visibleTabs.push('blacklist');
   }
   if (adminCanReviewChatReports() || adminCanManageChatRestrictions() || adminCanManageLeaderboardFilters()) {
     visibleTabs.push('tools');
@@ -6113,6 +6130,60 @@ async function updateSupportTicketStatus(status) {
 
 // ─── Security Scores Tab ────────────────────────────────────────────────────
 
+async function loadModeratorAdminRequests() {
+  const list = document.getElementById('moderatorAdminRequestsList');
+  if (!list) return;
+
+  const status = document.getElementById('moderatorAdminRequestsStatusFilter')?.value || 'open';
+  list.innerHTML = '<div class="spinner"></div>';
+
+  try {
+    const response = await apiService.adminGetModeratorRequests(status);
+    const requests = Array.isArray(response?.requests) ? response.requests : [];
+    if (!requests.length) {
+      list.innerHTML = '<div class="empty-state"><p class="text-muted">No admin requests found.</p></div>';
+      return;
+    }
+
+    list.innerHTML = requests.map((request) => `
+      <div class="card mb-3">
+        <div class="card-body" style="display:grid; gap:0.75rem;">
+          <div style="display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; align-items:flex-start;">
+            <div>
+              <strong>${escapeHtml(request.requesterUsername || request.requesterEmail || request.requesterUserId || 'Unknown staff member')}</strong>
+              <div class="text-muted" style="font-size:0.85rem;">${escapeHtml(request.staffRoleName || 'Staff')} - ${request.createdAt ? new Date(request.createdAt).toLocaleString() : 'Unknown date'}</div>
+            </div>
+            ${supportStatusBadge(request.status || 'open')}
+          </div>
+          <div style="white-space:pre-wrap; line-height:1.55;">${escapeHtml(request.message || '')}</div>
+          <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" type="button" onclick="updateModeratorAdminRequestStatus('${escapeHtml(request.id)}', 'reviewed')" ${request.status === 'reviewed' ? 'disabled' : ''}>
+              <i class="fas fa-eye"></i> Mark Reviewed
+            </button>
+            <button class="btn btn-success btn-sm" type="button" onclick="updateModeratorAdminRequestStatus('${escapeHtml(request.id)}', 'closed')" ${request.status === 'closed' ? 'disabled' : ''}>
+              <i class="fas fa-check"></i> Close
+            </button>
+            <button class="btn btn-warning btn-sm" type="button" onclick="updateModeratorAdminRequestStatus('${escapeHtml(request.id)}', 'open')" ${request.status === 'open' ? 'disabled' : ''}>
+              <i class="fas fa-redo"></i> Reopen
+            </button>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  } catch (error) {
+    list.innerHTML = `<div class="alert alert-danger">Failed to load admin requests: ${escapeHtml(error.message || 'Unknown error')}</div>`;
+  }
+}
+
+async function updateModeratorAdminRequestStatus(requestId, status) {
+  try {
+    await apiService.adminUpdateModeratorRequestStatus(requestId, status);
+    await loadModeratorAdminRequests();
+  } catch (error) {
+    Swal.fire('Unable to Update Request', error.message || 'Please try again.', 'error');
+  }
+}
+
 const RISK_LEVEL_META = {
   critical: { label: 'Critical', cls: 'security-risk-critical', icon: 'fas fa-skull-crossbones' },
   high:     { label: 'High',     cls: 'security-risk-high',     icon: 'fas fa-exclamation-triangle' },
@@ -6294,6 +6365,8 @@ window.loadSupportTickets = loadSupportTickets;
 window.openSupportTicket = openSupportTicket;
 window.replySupportTicket = replySupportTicket;
 window.updateSupportTicketStatus = updateSupportTicketStatus;
+window.loadModeratorAdminRequests = loadModeratorAdminRequests;
+window.updateModeratorAdminRequestStatus = updateModeratorAdminRequestStatus;
 window.loadSecurityScores = loadSecurityScores;
 window.viewPlayerSecurityDetail = viewPlayerSecurityDetail;
 window.handleResolveViolation = handleResolveViolation;

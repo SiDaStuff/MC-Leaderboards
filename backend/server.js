@@ -917,41 +917,51 @@ async function getSupportTicketRecord(ticketId) {
 }
 
 async function listSupportTicketRecords({ userId = null, limit = 100 } = {}) {
-  const firestoreTickets = userId
-    ? await fsList('supportTickets', { filters: [{ field: 'userId', value: userId }], limit: Math.max(limit, 50) })
-    : await fsList('supportTickets', { orderByField: 'updatedAt', direction: 'desc', limit });
-  if (firestoreTickets.length > 0) {
-    return firestoreTickets;
-  }
-
-  const realtimeSnapshot = userId
-    ? await db.ref('supportTickets').orderByChild('userId').equalTo(userId).once('value').catch(() => null)
-    : await db.ref('supportTickets').once('value').catch(() => null);
+  const [firestoreTickets, realtimeSnapshot] = await Promise.all([
+    userId
+      ? fsList('supportTickets', { filters: [{ field: 'userId', value: userId }], limit: Math.max(limit, 50) })
+      : fsList('supportTickets', { orderByField: 'updatedAt', direction: 'desc', limit }),
+    userId
+      ? db.ref('supportTickets').orderByChild('userId').equalTo(userId).once('value').catch(() => null)
+      : db.ref('supportTickets').once('value').catch(() => null)
+  ]);
+  const merged = new Map();
+  firestoreTickets.forEach((ticket) => merged.set(String(ticket.id), ticket));
   const realtimeTickets = Object.entries(realtimeSnapshot?.val?.() || {}).map(([id, ticket]) => ({ id, ...(ticket || {}) }));
   realtimeTickets.forEach((ticket) => {
     const { id, ...data } = ticket;
+    const selected = chooseFresherRecord(merged.get(id) || null, ticket);
+    if (selected.record) {
+      merged.set(id, selected.record);
+    }
     void fsWrite(`supportTickets/${id}`, data, false);
   });
-  return realtimeTickets;
+  return Array.from(merged.values())
+    .sort((left, right) => parseDateToMs(right.updatedAt || right.createdAt) - parseDateToMs(left.updatedAt || left.createdAt))
+    .slice(0, Math.max(1, Number(limit) || 100));
 }
 
 async function listSupportTicketMessages(ticketId) {
-  const firestoreMessages = await fsList(`supportTickets/${ticketId}/messages`, {
-    orderByField: 'createdAt',
-    direction: 'asc',
-    limit: 500
-  });
-  if (firestoreMessages.length > 0) {
-    return firestoreMessages;
-  }
-
-  const realtimeSnapshot = await db.ref(`supportMessages/${ticketId}`).once('value').catch(() => null);
+  const [firestoreMessages, realtimeSnapshot] = await Promise.all([
+    fsList(`supportTickets/${ticketId}/messages`, {
+      orderByField: 'createdAt',
+      direction: 'asc',
+      limit: 500
+    }),
+    db.ref(`supportMessages/${ticketId}`).once('value').catch(() => null)
+  ]);
+  const merged = new Map();
+  firestoreMessages.forEach((message) => merged.set(String(message.id), message));
   const realtimeMessages = Object.entries(realtimeSnapshot?.val?.() || {}).map(([id, message]) => ({ id, ...(message || {}) }));
   realtimeMessages.forEach((message) => {
     const { id, ...data } = message;
+    const selected = chooseFresherRecord(merged.get(id) || null, message);
+    if (selected.record) {
+      merged.set(id, selected.record);
+    }
     void fsWrite(`supportTickets/${ticketId}/messages/${id}`, data, false);
   });
-  return realtimeMessages.sort((left, right) => parseDateToMs(left.createdAt) - parseDateToMs(right.createdAt));
+  return Array.from(merged.values()).sort((left, right) => parseDateToMs(left.createdAt) - parseDateToMs(right.createdAt));
 }
 
 async function addSupportTicketMessage(ticketId, message) {
@@ -1598,7 +1608,23 @@ const ADMIN_CAPABILITY_MATRIX = {
     'audit:view',
     'matches:view',
     'reports:manage',
-    'disputes:manage'
+    'disputes:manage',
+    'messages:send',
+    'security_scores:view',
+    'applications:manage'
+  ],
+  senior_moderator: [
+    'users:view',
+    'blacklist:view',
+    'blacklist:manage',
+    'audit:view',
+    'matches:view',
+    'reports:manage',
+    'disputes:manage',
+    'messages:send',
+    'security_scores:view',
+    'applications:manage',
+    'bans:manage'
   ],
   support: [
     'users:view',
@@ -1642,8 +1668,13 @@ const STAFF_DASHBOARD_ACTION_DEFINITIONS = {
   open_admin_operations: { label: 'Queue & Match Ops', icon: 'fa-diagram-project' },
   open_admin_security_scores: { label: 'Security Scores', icon: 'fa-shield-alt' },
   open_admin_support: { label: 'Support Tickets', icon: 'fa-life-ring' },
+  open_admin_ban_waves: { label: 'Ban Waves', icon: 'fa-wave-square' },
+  open_admin_banned: { label: 'Bans', icon: 'fa-ban' },
+  open_admin_send_message: { label: 'Send Message', icon: 'fa-envelope' },
+  open_admin_punish: { label: 'Punish', icon: 'fa-gavel' },
   open_admin_servers: { label: 'Whitelisted Servers', icon: 'fa-server' },
   open_admin_staff_roles: { label: 'Roles', icon: 'fa-user-shield' },
+  open_admin_contact_requests: { label: 'Admin Requests', icon: 'fa-inbox' },
   open_moderation_chat: { label: 'Chat Reports', icon: 'fa-comments' },
   open_leaderboard_moderation: { label: 'Leaderboard Filters', icon: 'fa-filter' },
   queue_open: { label: 'Join Queue', icon: 'fa-play', legacy: true },
@@ -1663,23 +1694,46 @@ const SPECIAL_STAFF_ROLE_DEFINITIONS = {
     badgeVariant: 'moderator',
     color: '#facc15',
     iconClass: 'fas fa-shield-alt',
-    capabilities: ['moderation:chat_reports:view', 'moderation:chat:block'],
-    dashboardActions: ['open_moderation_chat']
+    capabilities: ['moderation:chat_reports:view', 'moderation:chat:block', 'moderation:contact_admins'],
+    dashboardActions: ['open_moderation_chat', 'open_admin_send_message', 'open_admin_security_scores', 'open_admin_moderation'],
+    adminCapabilities: ['messages:send', 'security_scores:view', 'applications:manage']
   },
   'leaderboard-moderator': {
     label: 'Leaderboard Moderator',
     badgeVariant: 'leaderboard-moderator',
     color: '#60a5fa',
-    iconClass: 'fas fa-shield-alt',
-    capabilities: ['leaderboard:filters:manage'],
+    iconClass: 'fas fa-filter',
+    capabilities: ['leaderboard:filters:manage', 'moderation:contact_admins'],
     dashboardActions: ['open_leaderboard_moderation']
+  },
+  'senior-moderator': {
+    label: 'Senior Moderator',
+    badgeVariant: 'senior-moderator',
+    color: '#ef4444',
+    iconClass: 'fas fa-shield-alt',
+    capabilities: ['moderation:chat_reports:view', 'moderation:chat:block', 'leaderboard:filters:manage', 'moderation:contact_admins'],
+    dashboardActions: [
+      'open_moderation_chat',
+      'open_leaderboard_moderation',
+      'open_admin_support',
+      'open_admin_reports',
+      'open_admin_moderation',
+      'open_admin_ban_waves',
+      'open_admin_banned',
+      'open_admin_security_scores',
+      'open_admin_send_message',
+      'open_admin_punish'
+    ],
+    adminRole: 'senior_moderator',
+    adminCapabilities: ADMIN_CAPABILITY_MATRIX.senior_moderator
   }
 };
 const BUILTIN_STAFF_ROLE_IDS = new Set(Object.keys(SPECIAL_STAFF_ROLE_DEFINITIONS));
 
 const STAFF_ROLE_ACTION_CAPABILITY_MAP = {
   open_moderation_chat: ['moderation:chat_reports:view', 'moderation:chat:block'],
-  open_leaderboard_moderation: ['leaderboard:filters:manage']
+  open_leaderboard_moderation: ['leaderboard:filters:manage'],
+  open_admin_send_message: ['moderation:contact_admins']
 };
 
 function normalizeStaffRoleIconPreset(value) {
@@ -1775,10 +1829,33 @@ function deriveStaffRoleCapabilities(roleId, role = {}) {
   return [...capabilitySet];
 }
 
+function deriveStaffRoleAdminCapabilities(roleId, role = {}) {
+  const capabilitySet = new Set();
+  const specialRole = resolveSpecialStaffRoleDefinition(roleId, role.name || roleId);
+
+  (specialRole?.adminCapabilities || []).forEach((capability) => capabilitySet.add(capability));
+  (Array.isArray(role.adminCapabilities) ? role.adminCapabilities : []).forEach((capability) => capabilitySet.add(capability));
+
+  return [...capabilitySet];
+}
+
 function buildStaffRoleSpecialBadges(roleId, role = {}, capabilities = null) {
   const capabilityList = Array.isArray(capabilities) ? capabilities : deriveStaffRoleCapabilities(roleId, role);
   const capabilitySet = new Set(capabilityList);
   const badges = [];
+
+  const roleSpecial = resolveSpecialStaffRoleDefinition(roleId, role.name || roleId);
+  if (roleSpecial?.badgeVariant === 'senior-moderator') {
+    const definition = SPECIAL_STAFF_ROLE_DEFINITIONS['senior-moderator'];
+    badges.push({
+      id: 'senior-moderator',
+      label: definition.label,
+      badgeVariant: definition.badgeVariant,
+      color: definition.color,
+      iconClass: definition.iconClass
+    });
+    return badges;
+  }
 
   if (capabilitySet.has('moderation:chat_reports:view') || capabilitySet.has('moderation:chat:block')) {
     const definition = SPECIAL_STAFF_ROLE_DEFINITIONS.moderator;
@@ -1903,15 +1980,21 @@ function resolveStaffRoleForProfile(profile = {}, roleMap = {}) {
   const iconConfig = buildStaffRoleIconConfig(role);
   const specialRole = resolveSpecialStaffRoleDefinition(primaryRoleId, role.name || primaryRoleId);
   const capabilitySet = new Set();
+  const adminCapabilitySet = new Set();
   const dashboardActions = new Set();
   const specialBadgeKeys = new Set();
   const specialBadges = [];
+  let resolvedStaffAdminRole = specialRole?.adminRole || null;
 
   assignedRoleIds.forEach((roleId) => {
     const resolvedRole = roleMap[roleId] || {};
     const resolvedSpecialRole = resolveSpecialStaffRoleDefinition(roleId, resolvedRole.name || roleId);
+    if (!resolvedStaffAdminRole && resolvedSpecialRole?.adminRole) {
+      resolvedStaffAdminRole = resolvedSpecialRole.adminRole;
+    }
     const capabilities = deriveStaffRoleCapabilities(roleId, resolvedRole);
     capabilities.forEach((capability) => capabilitySet.add(capability));
+    deriveStaffRoleAdminCapabilities(roleId, resolvedRole).forEach((capability) => adminCapabilitySet.add(capability));
     (Array.isArray(resolvedRole.dashboardActions) ? resolvedRole.dashboardActions : []).forEach((actionId) => dashboardActions.add(actionId));
     (resolvedSpecialRole?.dashboardActions || []).forEach((actionId) => dashboardActions.add(actionId));
     buildStaffRoleSpecialBadges(roleId, resolvedRole, capabilities).forEach((badge) => {
@@ -1938,6 +2021,8 @@ function resolveStaffRoleForProfile(profile = {}, roleMap = {}) {
     iconLabel: specialRole?.label || iconConfig.iconLabel,
     badgeVariant: specialBadges[0]?.badgeVariant || specialRole?.badgeVariant || null,
     capabilities: [...capabilitySet],
+    adminRole: resolvedStaffAdminRole,
+    adminCapabilities: [...adminCapabilitySet],
     specialBadges,
     dashboardActions: [...dashboardActions]
   };
@@ -1981,6 +2066,15 @@ function getAdminRole(profile = {}, email = '') {
 
 function getAdminCapabilities(role) {
   return ADMIN_CAPABILITY_MATRIX[role] || [];
+}
+
+function resolveStaffAdminContext(staffRole = null) {
+  const capabilities = Array.isArray(staffRole?.adminCapabilities) ? staffRole.adminCapabilities : [];
+  if (!staffRole?.adminRole || !capabilities.length) return null;
+  return {
+    role: staffRole.adminRole || staffRole.primaryRoleId || staffRole.id || 'staff',
+    capabilities
+  };
 }
 
 function adminHasCapability(req, capability) {
@@ -2348,7 +2442,21 @@ async function verifyAdmin(req, res, next) {
   try {
     const profile = req.userProfile || await getStoredUserProfile(req.user.uid);
     const role = getAdminRole(profile || {}, req.user.email);
-    if (!profile || !role) {
+    let capabilities = role ? getAdminCapabilities(role) : [];
+    let resolvedRole = role;
+
+    if (!resolvedRole && profile) {
+      const roleMap = await getAllStaffRoles().catch(() => ({}));
+      const staffRole = resolveStaffRoleForProfile(profile, roleMap);
+      const staffAdminContext = resolveStaffAdminContext(staffRole);
+      if (staffAdminContext) {
+        resolvedRole = staffAdminContext.role;
+        capabilities = staffAdminContext.capabilities;
+        req.staffRoleContext = staffRole;
+      }
+    }
+
+    if (!profile || !resolvedRole) {
       return res.status(403).json({
         error: true,
         code: 'PERMISSION_DENIED',
@@ -2357,8 +2465,8 @@ async function verifyAdmin(req, res, next) {
     }
 
     req.adminContext = {
-      role,
-      capabilities: getAdminCapabilities(role)
+      role: resolvedRole,
+      capabilities
     };
     req.userProfile = profile;
     next();
@@ -4790,8 +4898,10 @@ app.get('/api/users/me', verifyAuthAndNotBanned, async (req, res) => {
       getAllStaffRoles().catch(() => ({}))
     ]);
     const staffRole = resolveStaffRoleForProfile(resolvedProfile, staffRoles);
-    const adminRole = getAdminRole(resolvedProfile, req.user.email || resolvedProfile.email || '');
-    const adminCapabilities = adminRole ? getAdminCapabilities(adminRole) : [];
+    const nativeAdminRole = getAdminRole(resolvedProfile, req.user.email || resolvedProfile.email || '');
+    const staffAdminContext = resolveStaffAdminContext(staffRole);
+    const adminRole = nativeAdminRole || staffAdminContext?.role || null;
+    const adminCapabilities = nativeAdminRole ? getAdminCapabilities(nativeAdminRole) : (staffAdminContext?.capabilities || []);
     const warnings = Array.isArray(resolvedProfile.warnings) ? resolvedProfile.warnings : [];
     const activeWarnings = warnings.filter(w => w && w.acknowledged !== true);
 
@@ -5113,8 +5223,10 @@ app.put('/api/users/me', verifyAuthAndNotBanned, requireRecaptcha, async (req, r
       getAllStaffRoles().catch(() => ({}))
     ]);
     const staffRole = resolveStaffRoleForProfile(updated, staffRoles);
-    const adminRole = getAdminRole(updated, req.user.email || updated.email || '');
-    const adminCapabilities = adminRole ? getAdminCapabilities(adminRole) : [];
+    const nativeAdminRole = getAdminRole(updated, req.user.email || updated.email || '');
+    const staffAdminContext = resolveStaffAdminContext(staffRole);
+    const adminRole = nativeAdminRole || staffAdminContext?.role || null;
+    const adminCapabilities = nativeAdminRole ? getAdminCapabilities(nativeAdminRole) : (staffAdminContext?.capabilities || []);
     const warnings = Array.isArray(updated.warnings) ? updated.warnings : [];
     const activeWarnings = warnings.filter(w => w && w.acknowledged !== true);
 
@@ -8434,6 +8546,38 @@ function requireModerationCapabilityMiddleware(capability) {
   return async (req, res, next) => requireModerationCapability(req, res, next, capability);
 }
 
+function requireAnyModerationCapabilityMiddleware(capabilities = []) {
+  return async (req, res, next) => {
+    try {
+      const profile = req.userProfile || {};
+      const adminRole = getAdminRole(profile, req.user?.email || profile.email || '');
+      if (adminRole) {
+        return next();
+      }
+
+      const staffRole = await resolveRequesterStaffRole(req);
+      const roleCapabilities = new Set(Array.isArray(staffRole?.capabilities) ? staffRole.capabilities : []);
+      if (!capabilities.some((capability) => roleCapabilities.has(capability))) {
+        return res.status(403).json({
+          error: true,
+          code: 'PERMISSION_DENIED',
+          message: 'You do not have permission to access this moderation tool.'
+        });
+      }
+
+      req.staffRoleContext = staffRole;
+      return next();
+    } catch (error) {
+      console.error('Error verifying moderation capability:', error);
+      return res.status(500).json({
+        error: true,
+        code: 'SERVER_ERROR',
+        message: 'Unable to verify moderation capability'
+      });
+    }
+  };
+}
+
 /**
  * POST /api/submit-player-report - Submit a player report
  */
@@ -8985,6 +9129,10 @@ app.post('/api/support/tickets/:ticketId/close', verifyAuth, requireRecaptcha, a
  */
 app.get('/api/admin/support/tickets', verifyAuthAndNotBanned, verifyAdmin, async (req, res) => {
   try {
+    if (!adminHasCapability(req, 'users:view') && !adminHasCapability(req, 'support:manage')) {
+      return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Support ticket access required' });
+    }
+
     const status = normalizeSupportText(req.query.status, 32).toLowerCase();
     const max = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
     let tickets = await listSupportTicketRecords({ limit: max });
@@ -9012,6 +9160,10 @@ app.get('/api/admin/support/tickets', verifyAuthAndNotBanned, verifyAdmin, async
  */
 app.get('/api/admin/support/tickets/:ticketId', verifyAuthAndNotBanned, verifyAdmin, async (req, res) => {
   try {
+    if (!adminHasCapability(req, 'users:view') && !adminHasCapability(req, 'support:manage')) {
+      return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Support ticket access required' });
+    }
+
     const { ticketId } = req.params;
     const ticket = await getSupportTicketRecord(ticketId);
     if (!ticket) {
@@ -9034,6 +9186,10 @@ app.get('/api/admin/support/tickets/:ticketId', verifyAuthAndNotBanned, verifyAd
  */
 app.post('/api/admin/support/tickets/:ticketId/messages', verifyAuthAndNotBanned, verifyAdmin, requireRecaptcha, async (req, res) => {
   try {
+    if (!adminHasCapability(req, 'users:view') && !adminHasCapability(req, 'support:manage')) {
+      return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Support ticket access required' });
+    }
+
     const { ticketId } = req.params;
     const message = normalizeSupportText(req.body?.message, 2000);
     if (!message || message.length < 2) {
@@ -9085,6 +9241,10 @@ app.post('/api/admin/support/tickets/:ticketId/messages', verifyAuthAndNotBanned
  */
 app.post('/api/admin/support/tickets/:ticketId/status', verifyAuthAndNotBanned, verifyAdmin, requireRecaptcha, async (req, res) => {
   try {
+    if (!adminHasCapability(req, 'users:view') && !adminHasCapability(req, 'support:manage')) {
+      return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Support ticket access required' });
+    }
+
     const { ticketId } = req.params;
     const status = normalizeSupportText(req.body?.status, 32).toLowerCase();
     if (!['open', 'awaiting_user', 'awaiting_admin', 'resolved', 'closed'].includes(status)) {
@@ -9427,6 +9587,94 @@ app.delete('/api/moderation/leaderboard-filters/:userId', verifyAuthAndNotBanned
       code: 'SERVER_ERROR',
       message: 'Error removing leaderboard filter'
     });
+  }
+});
+
+app.post('/api/moderation/admin-contact', verifyAuthAndNotBanned, requireAnyModerationCapabilityMiddleware([
+  'moderation:contact_admins',
+  'moderation:chat_reports:view',
+  'moderation:chat:block',
+  'leaderboard:filters:manage'
+]), async (req, res) => {
+  try {
+    const message = normalizeSupportText(req.body?.message, 2000);
+    if (!message || message.length < 5) {
+      return res.status(400).json({ error: true, code: 'INVALID_MESSAGE', message: 'Message must be at least 5 characters.' });
+    }
+    if (await containsProfanity(message)) {
+      return res.status(400).json({ error: true, code: 'PROFANITY_DETECTED', message: 'Message contains inappropriate language.' });
+    }
+
+    const profile = req.userProfile || await getStoredUserProfile(req.user.uid) || {};
+    const requestRef = db.ref('moderatorAdminRequests').push();
+    const staffRole = req.staffRoleContext || await resolveRequesterStaffRole(req).catch(() => null);
+    const payload = sanitizeFirebaseValue({
+      id: requestRef.key,
+      requesterUserId: req.user.uid,
+      requesterEmail: req.user.email || profile.email || null,
+      requesterUsername: profile.minecraftUsername || null,
+      staffRoleName: staffRole?.name || null,
+      staffRoleIds: Array.isArray(staffRole?.roleIds) ? staffRole.roleIds : [],
+      message,
+      status: 'open',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+
+    await requestRef.set(payload);
+    res.json({ success: true, request: payload });
+  } catch (error) {
+    console.error('Error creating admin contact request:', error);
+    res.status(500).json({ error: true, code: 'SERVER_ERROR', message: 'Error sending admin request' });
+  }
+});
+
+app.get('/api/admin/moderator-requests', verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    if (!adminHasCapability(req, 'settings:manage') && !adminHasCapability(req, '*')) {
+      return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Settings manage capability required' });
+    }
+
+    const status = normalizeSupportText(req.query.status, 32).toLowerCase();
+    const snapshot = await db.ref('moderatorAdminRequests').once('value');
+    let requests = Object.entries(snapshot.val() || {}).map(([id, request]) => ({ id, ...(request || {}) }));
+    if (status && status !== 'all') {
+      requests = requests.filter((request) => String(request.status || 'open') === status);
+    }
+    requests.sort((left, right) => parseDateToMs(right.updatedAt || right.createdAt) - parseDateToMs(left.updatedAt || left.createdAt));
+    res.json({ success: true, requests: requests.slice(0, 200) });
+  } catch (error) {
+    console.error('Error loading moderator admin requests:', error);
+    res.status(500).json({ error: true, code: 'SERVER_ERROR', message: 'Error loading admin requests' });
+  }
+});
+
+app.post('/api/admin/moderator-requests/:requestId/status', verifyAuth, verifyAdmin, async (req, res) => {
+  try {
+    if (!adminHasCapability(req, 'settings:manage') && !adminHasCapability(req, '*')) {
+      return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Settings manage capability required' });
+    }
+
+    const status = normalizeSupportText(req.body?.status, 32).toLowerCase();
+    if (!['open', 'reviewed', 'closed'].includes(status)) {
+      return res.status(400).json({ error: true, code: 'INVALID_STATUS', message: 'Invalid status' });
+    }
+    const requestId = String(req.params.requestId || '').trim();
+    const requestRef = db.ref(`moderatorAdminRequests/${requestId}`);
+    const snapshot = await requestRef.once('value');
+    if (!snapshot.exists()) {
+      return res.status(404).json({ error: true, code: 'NOT_FOUND', message: 'Request not found' });
+    }
+
+    await requestRef.update({
+      status,
+      reviewedBy: req.user.uid,
+      updatedAt: new Date().toISOString()
+    });
+    res.json({ success: true, status });
+  } catch (error) {
+    console.error('Error updating moderator admin request:', error);
+    res.status(500).json({ error: true, code: 'SERVER_ERROR', message: 'Error updating admin request' });
   }
 });
 
@@ -13102,6 +13350,10 @@ app.delete('/api/inbox/messages/:id', verifyAuth, async (req, res) => {
  */
 app.post('/api/admin/inbox/send', verifyAuth, verifyAdmin, async (req, res) => {
   try {
+    if (!adminHasCapability(req, 'users:manage') && !adminHasCapability(req, 'messages:send')) {
+      return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Message send capability required' });
+    }
+
     const { userId, title, message, type } = req.body;
 
     if (!userId || !title || !message) {
@@ -17503,6 +17755,10 @@ app.post('/api/admin/players/rating-wipe', adminLimiter, verifyAuth, verifyAdmin
 // Ban account
 app.post('/api/admin/ban', verifyAuth, verifyAdmin, async (req, res) => {
   try {
+    if (!adminHasCapability(req, 'users:manage') && !adminHasCapability(req, 'bans:manage')) {
+      return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Ban manage capability required' });
+    }
+
     const { identifier, duration, reason } = req.body;
 
     if (!identifier) {
@@ -17772,6 +18028,10 @@ app.post('/api/auth/acknowledge-warning', verifyAuth, requireRecaptcha, async (r
 
 app.post('/api/admin/unban/:firebaseUid', verifyAuth, verifyAdmin, async (req, res) => {
   try {
+    if (!adminHasCapability(req, 'users:manage') && !adminHasCapability(req, 'bans:manage')) {
+      return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Ban manage capability required' });
+    }
+
     const { firebaseUid } = req.params;
 
     const userRef = db.ref(`users/${firebaseUid}`);
@@ -17833,6 +18093,10 @@ app.post('/api/admin/unban/:firebaseUid', verifyAuth, verifyAdmin, async (req, r
 // Get all banned accounts
 app.get('/api/admin/banned', verifyAuth, verifyAdmin, async (req, res) => {
   try {
+    if (!adminHasCapability(req, 'users:manage') && !adminHasCapability(req, 'bans:manage')) {
+      return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Ban view capability required' });
+    }
+
     const usersRef = db.ref('users');
     const usersSnapshot = await usersRef.once('value');
     const allUsers = usersSnapshot.val() || {};
@@ -17870,6 +18134,10 @@ app.get('/api/admin/banned', verifyAuth, verifyAdmin, async (req, res) => {
 // Search banned accounts
 app.get('/api/admin/banned/search', verifyAuth, verifyAdmin, async (req, res) => {
   try {
+    if (!adminHasCapability(req, 'users:manage') && !adminHasCapability(req, 'bans:manage')) {
+      return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Ban view capability required' });
+    }
+
     const { q: searchTerm } = req.query;
 
     if (!searchTerm) {
@@ -17931,6 +18199,10 @@ app.get('/api/admin/banned/search', verifyAuth, verifyAdmin, async (req, res) =>
  */
 app.get('/api/admin/ban-waves', verifyAuth, verifyAdmin, async (req, res) => {
   try {
+    if (!adminHasCapability(req, 'blacklist:manage')) {
+      return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Blacklist manage capability required' });
+    }
+
     const waveRef = db.ref('banWaves');
     const waveSnapshot = await waveRef.once('value');
     const waveSnapshots = waveSnapshot.val() || {};
@@ -20052,14 +20324,23 @@ app.get('/api/admin/security-scores', verifyAuth, verifyAdmin, async (req, res) 
 
     let scores = [];
 
-    if (fsdb) {
-      let query = fsdb.collection('securityScores').orderBy('score', 'desc');
-      if (riskFilter) query = query.where('riskLevel', '==', riskFilter);
-      if (Number.isFinite(startAfter)) query = query.startAfter(startAfter);
-      query = query.limit(limitVal);
+    if (!adminHasCapability(req, 'audit:view') && !adminHasCapability(req, 'security_scores:view')) {
+      return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Security score access required' });
+    }
 
-      const snap = await query.get();
-      scores = snap.docs.map((doc) => doc.data());
+    if (fsdb) {
+      try {
+        let query = fsdb.collection('securityScores').orderBy('score', 'desc');
+        if (riskFilter) query = query.where('riskLevel', '==', riskFilter);
+        if (Number.isFinite(startAfter)) query = query.startAfter(startAfter);
+        query = query.limit(limitVal);
+
+        const snap = await query.get();
+        scores = snap.docs.map((doc) => ({ userId: doc.id, ...doc.data() }));
+      } catch (firestoreError) {
+        logger.warn('Firestore security score list failed; falling back to RTDB', { error: firestoreError });
+        scores = [];
+      }
     }
 
     if (scores.length === 0) {
@@ -20082,6 +20363,10 @@ app.get('/api/admin/security-scores', verifyAuth, verifyAdmin, async (req, res) 
  */
 app.get('/api/admin/security-scores/:userId', verifyAuth, verifyAdmin, async (req, res) => {
   try {
+    if (!adminHasCapability(req, 'audit:view') && !adminHasCapability(req, 'security_scores:view')) {
+      return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Security score access required' });
+    }
+
     const { userId } = req.params;
     if (!userId || typeof userId !== 'string') {
       return res.status(400).json({ error: true, code: 'VALIDATION_ERROR', message: 'userId required' });

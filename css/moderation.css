@@ -52,6 +52,16 @@
             line-height: 1.6;
         }
 
+        .moderation-shortcut-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .moderation-shortcut-grid .btn {
+            justify-content: flex-start;
+        }
+
         .moderation-highlight {
             animation: moderationHighlight 1.8s ease;
         }

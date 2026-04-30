@@ -214,6 +214,12 @@ function getRoleBadgeDescriptors(entity = {}, options = {}) {
       variant: 'moderator',
       iconHtml: '<i class="fas fa-shield-alt"></i>'
     });
+  } else if (adminRole === 'senior_moderator' || adminRole === 'senior-moderator') {
+    addDescriptor('admin-senior-moderator', {
+      label: 'Senior Moderator',
+      variant: 'senior-moderator',
+      iconHtml: '<i class="fas fa-shield-alt"></i>'
+    });
   } else if (adminRole === 'support') {
     addDescriptor('admin-support', {
       label: 'Support Staff',
@@ -251,7 +257,9 @@ function getRoleBadgeDescriptors(entity = {}, options = {}) {
       ];
 
   normalizedSpecialBadges.forEach((badge) => {
-    const variant = badge?.badgeVariant === 'leaderboard-moderator'
+    const variant = badge?.badgeVariant === 'senior-moderator'
+      ? 'senior-moderator'
+      : badge?.badgeVariant === 'leaderboard-moderator'
       ? 'leaderboard-moderator'
       : badge?.badgeVariant === 'moderator'
         ? 'moderator'
@@ -259,6 +267,7 @@ function getRoleBadgeDescriptors(entity = {}, options = {}) {
     addDescriptor(`staff-special:${variant}`, {
       label: badge?.label || staffRole?.name || 'Staff',
       variant,
+      color: badge?.color || '',
       iconHtml: `<i class="${escapeHtml(badge?.iconClass || (variant === 'leaderboard-moderator' ? 'fas fa-filter' : 'fas fa-shield-alt'))}"></i>`
     });
   });

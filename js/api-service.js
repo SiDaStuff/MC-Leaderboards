@@ -1481,6 +1481,20 @@ class ApiService {
     });
   }
 
+  async contactAdmins(message) {
+    return this.post('/moderation/admin-contact', { message });
+  }
+
+  async adminGetModeratorRequests(status = 'open') {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    return this.get(`/admin/moderator-requests?${params.toString()}`);
+  }
+
+  async adminUpdateModeratorRequestStatus(requestId, status) {
+    return this.post(`/admin/moderator-requests/${encodeURIComponent(String(requestId || '').trim())}/status`, { status });
+  }
+
   /**
    * Admin: list support tickets
    */

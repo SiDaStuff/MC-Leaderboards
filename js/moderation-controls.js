@@ -15,6 +15,7 @@ function getModerationCapabilities() {
     capabilitySet.add('moderation:chat_reports:view');
     capabilitySet.add('moderation:chat:block');
     capabilitySet.add('leaderboard:filters:manage');
+    capabilitySet.add('moderation:contact_admins');
   }
 
   return capabilitySet;
@@ -32,8 +33,52 @@ function moderationCanManageLeaderboardFilters() {
   return getModerationCapabilities().has('leaderboard:filters:manage');
 }
 
+function moderationCanContactAdmins() {
+  const capabilities = getModerationCapabilities();
+  return capabilities.has('moderation:contact_admins')
+    || capabilities.has('moderation:chat_reports:view')
+    || capabilities.has('moderation:chat:block')
+    || capabilities.has('leaderboard:filters:manage');
+}
+
 function moderationHasAccess() {
-  return moderationCanReviewChatReports() || moderationCanManageChatRestrictions() || moderationCanManageLeaderboardFilters();
+  return moderationCanReviewChatReports() || moderationCanManageChatRestrictions() || moderationCanManageLeaderboardFilters() || moderationCanContactAdmins();
+}
+
+function getModerationAdminCapabilities() {
+  const profile = getModerationProfile();
+  const capabilities = Array.isArray(profile?.adminContext?.capabilities) ? profile.adminContext.capabilities : [];
+  return new Set(capabilities);
+}
+
+function moderationAdminHasCapability(capability) {
+  const capabilities = getModerationAdminCapabilities();
+  return capabilities.has('*') || capabilities.has(capability);
+}
+
+function buildStaffAdminShortcuts() {
+  const card = document.getElementById('staffAdminShortcutsCard');
+  const grid = document.getElementById('staffAdminShortcutsGrid');
+  if (!card || !grid) return;
+
+  const shortcuts = [
+    { label: 'Tier Tester Applications', icon: 'fa-star', tab: 'moderation', requires: ['applications:manage', 'blacklist:view'] },
+    { label: 'Reports', icon: 'fa-flag', tab: 'reported', requires: ['reports:manage'] },
+    { label: 'Support Tickets', icon: 'fa-life-ring', tab: 'support', requires: ['users:view'] },
+    { label: 'Security Scores', icon: 'fa-shield-alt', tab: 'security-scores', requires: ['audit:view', 'security_scores:view'] },
+    { label: 'Send Message', icon: 'fa-envelope', tab: 'send-message', requires: ['users:manage', 'messages:send'] },
+    { label: 'Blacklist', icon: 'fa-ban', tab: 'moderation', requires: ['blacklist:view'] },
+    { label: 'Ban Waves', icon: 'fa-wave-square', tab: 'ban-waves', requires: ['blacklist:manage'] },
+    { label: 'Bans', icon: 'fa-user-slash', tab: 'banned', requires: ['users:manage', 'bans:manage'] },
+    { label: 'Punish', icon: 'fa-gavel', tab: 'punish', requires: ['blacklist:manage'] }
+  ].filter((shortcut) => shortcut.requires.some((capability) => moderationAdminHasCapability(capability)));
+
+  card.classList.toggle('is-visible', shortcuts.length > 0);
+  grid.innerHTML = shortcuts.map((shortcut) => `
+    <button type="button" class="btn btn-secondary" onclick="window.location.href='admin.html?tab=${encodeURIComponent(shortcut.tab)}'">
+      <i class="fas ${escapeHtml(shortcut.icon)}"></i> ${escapeHtml(shortcut.label)}
+    </button>
+  `).join('');
 }
 
 function buildModerationSummary() {
@@ -47,6 +92,7 @@ function buildModerationSummary() {
   if (moderationCanReviewChatReports()) capabilities.push('chat report review');
   if (moderationCanManageChatRestrictions()) capabilities.push('chat restriction controls');
   if (moderationCanManageLeaderboardFilters()) capabilities.push('leaderboard visibility filters');
+  if (moderationCanContactAdmins()) capabilities.push('admin contact');
 
   if (title) {
     title.textContent = capabilities.length
@@ -243,6 +289,34 @@ async function removeLeaderboardFilter(userId) {
   }
 }
 
+async function submitContactAdmins(event) {
+  event.preventDefault();
+  const input = document.getElementById('contactAdminsMessage');
+  const btn = document.getElementById('contactAdminsBtn');
+  const message = String(input?.value || '').trim();
+  if (!message) {
+    Swal.fire('Missing Message', 'Type a short request for the admin team first.', 'warning');
+    return;
+  }
+
+  try {
+    if (btn) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    }
+    await apiService.contactAdmins(message);
+    if (input) input.value = '';
+    Swal.fire('Request Sent', 'Your message is now in the admin request queue.', 'success');
+  } catch (error) {
+    Swal.fire('Unable to Send Request', error.message || 'Please try again.', 'error');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Request';
+    }
+  }
+}
+
 function focusModerationToolFromQuery() {
   const params = new URLSearchParams(window.location.search);
   const tool = String(params.get('tool') || '').trim().toLowerCase();
@@ -265,6 +339,7 @@ function focusModerationToolFromQuery() {
 }
 
 function renderModerationSections() {
+  const contactCard = document.getElementById('contactAdminsCard');
   const chatCard = document.getElementById('moderationChatCard');
   const leaderboardCard = document.getElementById('leaderboardModerationCard');
   const chatIntro = document.getElementById('moderationChatIntro');
@@ -275,9 +350,12 @@ function renderModerationSections() {
   const canReviewChat = moderationCanReviewChatReports();
   const canManageChat = moderationCanManageChatRestrictions();
   const canManageLeaderboard = moderationCanManageLeaderboardFilters();
+  const canContactAdmins = moderationCanContactAdmins();
 
+  contactCard?.classList.toggle('is-visible', canContactAdmins);
   chatCard?.classList.toggle('is-visible', canReviewChat || canManageChat);
   leaderboardCard?.classList.toggle('is-visible', canManageLeaderboard);
+  buildStaffAdminShortcuts();
 
   if (chatIntro) {
     chatIntro.textContent = canManageChat
@@ -335,6 +413,7 @@ window.clearModerationChatRestriction = clearModerationChatRestriction;
 window.loadLeaderboardModerationFilters = loadLeaderboardModerationFilters;
 window.submitLeaderboardFilter = submitLeaderboardFilter;
 window.removeLeaderboardFilter = removeLeaderboardFilter;
+window.submitContactAdmins = submitContactAdmins;
 
 window.addEventListener('DOMContentLoaded', async () => {
   if (window.mclbLoadingOverlay) {

@@ -22,19 +22,26 @@ const DASHBOARD_QUEUE_FALLBACK_POLL_MS = 7000;
 const DASHBOARD_ADMIN_CAPABILITY_MATRIX = {
   owner: ['*'],
   lead_admin: ['users:view', 'users:manage', 'blacklist:view', 'blacklist:manage', 'audit:view', 'matches:view', 'matches:manage', 'reports:manage', 'disputes:manage', 'queue:inspect', 'settings:manage'],
-  moderator: ['users:view', 'blacklist:view', 'blacklist:manage', 'audit:view', 'matches:view', 'reports:manage', 'disputes:manage'],
+  moderator: ['users:view', 'blacklist:view', 'blacklist:manage', 'audit:view', 'matches:view', 'reports:manage', 'disputes:manage', 'messages:send', 'security_scores:view', 'applications:manage'],
+  senior_moderator: ['users:view', 'blacklist:view', 'blacklist:manage', 'audit:view', 'matches:view', 'reports:manage', 'disputes:manage', 'messages:send', 'security_scores:view', 'applications:manage', 'bans:manage'],
   support: ['users:view', 'audit:view', 'matches:view']
 };
 
 const DASHBOARD_ADMIN_TAB_REQUIREMENTS = {
   management: ['users:view'],
-  moderation: ['blacklist:view'],
+  moderation: ['blacklist:view', 'applications:manage'],
   reported: ['reports:manage'],
+  support: ['users:view'],
+  'ban-waves': ['blacklist:manage'],
+  banned: ['users:manage', 'bans:manage'],
   matches: ['matches:view'],
   operations: ['matches:view'],
-  'security-scores': ['audit:view'],
+  'security-scores': ['audit:view', 'security_scores:view'],
   servers: ['settings:manage'],
-  roles: ['users:manage']
+  roles: ['users:manage'],
+  'send-message': ['users:manage', 'messages:send'],
+  punish: ['blacklist:manage'],
+  'admin-requests': ['settings:manage']
 };
 
 // Restore configureUnifiedQueueExperience for dashboard UI
@@ -347,8 +354,13 @@ function renderStaffActionsSection() {
     open_admin_operations: { label: 'Queue & Match Ops', icon: 'fa-diagram-project', adminTab: 'operations', run: () => openAdminTabShortcut('operations') },
     open_admin_security_scores: { label: 'Security Scores', icon: 'fa-shield-alt', adminTab: 'security-scores', run: () => openAdminTabShortcut('security-scores') },
     open_admin_support: { label: 'Support Tickets', icon: 'fa-life-ring', adminTab: 'support', run: () => openAdminTabShortcut('support') },
+    open_admin_ban_waves: { label: 'Ban Waves', icon: 'fa-wave-square', adminTab: 'ban-waves', run: () => openAdminTabShortcut('ban-waves') },
+    open_admin_banned: { label: 'Bans', icon: 'fa-ban', adminTab: 'banned', run: () => openAdminTabShortcut('banned') },
+    open_admin_send_message: { label: 'Send Message', icon: 'fa-envelope', adminTab: 'send-message', run: () => openAdminTabShortcut('send-message') },
+    open_admin_punish: { label: 'Punish', icon: 'fa-gavel', adminTab: 'punish', run: () => openAdminTabShortcut('punish') },
     open_admin_servers: { label: 'Whitelisted Servers', icon: 'fa-server', adminTab: 'servers', run: () => openAdminTabShortcut('servers') },
     open_admin_staff_roles: { label: 'Roles', icon: 'fa-user-shield', adminTab: 'roles', run: () => openAdminTabShortcut('roles') },
+    open_admin_contact_requests: { label: 'Admin Requests', icon: 'fa-inbox', adminTab: 'admin-requests', run: () => openAdminTabShortcut('admin-requests') },
     open_moderation_chat: { label: 'Chat Reports', icon: 'fa-comments', run: () => { window.location.href = 'moderation.html?tool=moderator-chat'; } },
     open_leaderboard_moderation: { label: 'Leaderboard Filters', icon: 'fa-filter', run: () => { window.location.href = 'moderation.html?tool=leaderboard-filters'; } },
     queue_open: { label: 'Join Queue', icon: 'fa-play', run: () => document.getElementById('queueForm')?.scrollIntoView({ behavior: 'smooth', block: 'center' }) },
@@ -725,6 +737,9 @@ window.clearModeratorChatRestriction = clearModeratorChatRestriction;
 window.loadLeaderboardModerationFilters = loadLeaderboardModerationFilters;
 window.submitLeaderboardFilter = submitLeaderboardFilter;
 window.removeLeaderboardFilter = removeLeaderboardFilter;
+window.checkUserWarnings = checkUserWarnings;
+window.showWarningBanner = showWarningBanner;
+window.acknowledgeWarning = acknowledgeWarning;
 
 async function getCachedProfile({ forceRefresh = false } = {}) {
   try {
@@ -1532,6 +1547,87 @@ async function loadUserProfile() {
     }
   } catch (error) {
     console.error('Error loading profile:', error);
+  }
+}
+
+async function checkUserWarnings() {
+  try {
+    const profile = AppState.getProfile?.() || await getCachedProfile();
+    if (!profile || !Array.isArray(profile.warnings)) return;
+
+    const activeWarnings = profile.warnings.filter((warning) => warning && warning.acknowledged !== true);
+    if (activeWarnings.length > 0) {
+      showWarningBanner(activeWarnings);
+    } else {
+      document.getElementById('warningBanner')?.remove();
+      document.body.classList.remove('has-dashboard-warning');
+    }
+  } catch (error) {
+    console.error('Error checking user warnings:', error);
+  }
+}
+
+function showWarningBanner(warnings = []) {
+  const warning = warnings[0];
+  if (!warning) return;
+
+  let banner = document.getElementById('warningBanner');
+  if (!banner) {
+    banner = document.createElement('section');
+    banner.id = 'warningBanner';
+    banner.className = 'dashboard-warning-banner';
+    banner.setAttribute('role', 'region');
+    banner.setAttribute('aria-live', 'polite');
+    document.querySelector('.dashboard-content')?.prepend(banner);
+  }
+
+  const issuedAt = warning.warnedAt || warning.createdAt || warning.issuedAt;
+  document.body.classList.add('has-dashboard-warning');
+  banner.innerHTML = `
+    <div class="dashboard-warning-banner__content">
+      <div class="dashboard-warning-banner__body">
+        <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+        <div>
+          <strong>Account Warning</strong>
+          <p>${escapeHtml(warning.reason || 'A moderation warning requires your attention.')}</p>
+          ${issuedAt ? `<small>Issued ${escapeHtml(new Date(issuedAt).toLocaleString())}</small>` : ''}
+        </div>
+      </div>
+      ${warning.id ? `
+        <button type="button" class="btn btn-secondary" onclick="acknowledgeWarning('${escapeHtml(warning.id)}')">
+          <i class="fas fa-check"></i> I Understand
+        </button>
+      ` : ''}
+    </div>
+  `;
+}
+
+async function acknowledgeWarning(warningId) {
+  if (!warningId) return;
+  try {
+    await apiService.acknowledgeWarning(warningId);
+    const profile = AppState.getProfile?.() || {};
+    if (Array.isArray(profile.warnings)) {
+      const nextProfile = {
+        ...profile,
+        warnings: profile.warnings.map((warning) => (
+          warning?.id === warningId
+            ? { ...warning, acknowledged: true, acknowledgedAt: new Date().toISOString() }
+            : warning
+        ))
+      };
+      AppState.setProfile(nextProfile);
+      const remaining = nextProfile.warnings.filter((warning) => warning && warning.acknowledged !== true);
+      if (remaining.length) {
+        showWarningBanner(remaining);
+      } else {
+        document.getElementById('warningBanner')?.remove();
+        document.body.classList.remove('has-dashboard-warning');
+      }
+    }
+  } catch (error) {
+    console.error('Error acknowledging warning:', error);
+    Swal.fire('Unable to Acknowledge Warning', error.message || 'Please try again.', 'error');
   }
 }
 
