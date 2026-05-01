@@ -59,6 +59,133 @@ async function waitForAuthState() {
 
 // Track if redirect is in progress to prevent loops
 let redirectInProgress = false;
+const REDIRECT_LOOP_STORAGE_KEY = 'mclb_redirect_loop_history';
+const REDIRECT_RECOVERY_STORAGE_KEY = 'mclb_redirect_recovery_at';
+const REDIRECT_LOOP_WINDOW_MS = 12000;
+const REDIRECT_LOOP_MAX_HOPS = 4;
+
+function getCurrentPageName() {
+  return window.location.pathname.split('/').pop() || 'index.html';
+}
+
+function normalizeRedirectTarget(target) {
+  return String(target || '').split('?')[0].split('#')[0] || 'index.html';
+}
+
+function readRedirectHistory() {
+  try {
+    const raw = window.sessionStorage.getItem(REDIRECT_LOOP_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (_) {
+    return [];
+  }
+}
+
+function writeRedirectHistory(history) {
+  try {
+    window.sessionStorage.setItem(REDIRECT_LOOP_STORAGE_KEY, JSON.stringify(history));
+  } catch (_) {}
+}
+
+function clearRedirectHistory() {
+  try {
+    window.sessionStorage.removeItem(REDIRECT_LOOP_STORAGE_KEY);
+  } catch (_) {}
+}
+
+function recordRedirectHop(target, reason = 'redirect') {
+  const now = Date.now();
+  const from = getCurrentPageName();
+  const to = normalizeRedirectTarget(target);
+  const history = readRedirectHistory()
+    .filter((entry) => entry && (now - Number(entry.at || 0)) < REDIRECT_LOOP_WINDOW_MS);
+
+  history.push({ from, to, reason, at: now });
+  writeRedirectHistory(history);
+
+  const sensitiveHops = history.filter((entry) => ['dashboard.html', 'onboarding.html'].includes(entry.from)
+    || ['dashboard.html', 'onboarding.html'].includes(entry.to));
+  const recoveredAt = Number(window.sessionStorage.getItem(REDIRECT_RECOVERY_STORAGE_KEY) || 0);
+  const recentlyRecovered = recoveredAt && (now - recoveredAt) < 30000;
+
+  return sensitiveHops.length >= REDIRECT_LOOP_MAX_HOPS && !recentlyRecovered;
+}
+
+function clearLocalStorageForRedirectRecovery() {
+  try {
+    window.localStorage.clear();
+  } catch (_) {}
+
+  try {
+    if (typeof apiService !== 'undefined' && typeof apiService.clearCache === 'function') {
+      apiService.clearCache();
+    }
+  } catch (_) {}
+
+  try {
+    if (typeof AppState !== 'undefined' && typeof AppState.setProfile === 'function') {
+      AppState.setProfile(null);
+    }
+  } catch (_) {}
+}
+
+async function resolveRedirectRecoveryTarget(fallbackTarget) {
+  try {
+    const auth = typeof getAuth === 'function'
+      ? getAuth()
+      : (typeof firebase !== 'undefined' && firebase.auth ? firebase.auth() : null);
+    const user = auth?.currentUser || AppState.currentUser || null;
+    if (!user) return 'login.html';
+
+    if (typeof firebaseAuthService !== 'undefined' && typeof firebaseAuthService.loadCurrentAccountContext === 'function') {
+      const context = await firebaseAuthService.loadCurrentAccountContext({
+        user,
+        forceProfileRefresh: true,
+        requireProfile: true,
+        reloadUser: true
+      });
+      const profile = context.profile || null;
+      return profile?.onboardingCompleted === true ? 'dashboard.html' : 'onboarding.html';
+    }
+
+    if (typeof apiService !== 'undefined' && typeof apiService.request === 'function') {
+      const profile = await apiService.request('/users/me', { method: 'GET', noCache: true, timeout: 5000 });
+      AppState.setProfile(profile);
+      return profile?.onboardingCompleted === true ? 'dashboard.html' : 'onboarding.html';
+    }
+  } catch (error) {
+    console.warn('Redirect loop recovery profile refresh failed:', error?.message || error);
+  }
+
+  return fallbackTarget || 'login.html';
+}
+
+async function recoverFromRedirectLoop(fallbackTarget) {
+  clearLocalStorageForRedirectRecovery();
+  clearRedirectHistory();
+  try {
+    window.sessionStorage.setItem(REDIRECT_RECOVERY_STORAGE_KEY, String(Date.now()));
+  } catch (_) {}
+
+  const target = await resolveRedirectRecoveryTarget(fallbackTarget);
+  const separator = target.includes('?') ? '&' : '?';
+  window.location.replace(`${target}${separator}recovered=storage`);
+}
+
+async function guardedRedirect(target, { replace = false, reason = 'redirect' } = {}) {
+  const normalizedTarget = normalizeRedirectTarget(target);
+  if (recordRedirectHop(normalizedTarget, reason)) {
+    await recoverFromRedirectLoop(normalizedTarget);
+    return;
+  }
+
+  if (replace) {
+    window.location.replace(target);
+  } else {
+    window.location.href = target;
+  }
+}
 
 function isInvalidAuthenticatedSessionError(error) {
   const code = String(error?.code || '');
