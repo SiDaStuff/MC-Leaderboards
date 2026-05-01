@@ -3431,7 +3431,7 @@ async function handleAddToWhitelist(event) {
     Swal.fire({
       icon: 'success',
       title: 'Added to Whitelist',
-      text: 'Account added to alt detection whitelist',
+      text: 'Account or future signup email added to alt detection whitelist',
       timer: 1500,
       showConfirmButton: false
     });
@@ -3473,7 +3473,7 @@ async function loadWhitelist() {
           <div class="row align-items-center">
             <div class="col-md-8">
               <h5>${escapeHtml(account.email || 'Unknown')}</h5>
-              <p class="text-muted">Firebase UID: ${account.firebaseUid}</p>
+              <p class="text-muted">${account.pendingEmail ? 'Future signup email' : 'Firebase UID'}: ${escapeHtml(account.firebaseUid)}</p>
               <p class="text-muted">Whitelisted: ${new Date(account.whitelistedAt).toLocaleString()}</p>
             </div>
             <div class="col-md-4">

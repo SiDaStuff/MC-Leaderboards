@@ -7,6 +7,17 @@ function normalizeEmailAddress(email) {
   return String(email || '').trim().toLowerCase();
 }
 
+function getAltWhitelistEmailKey(email) {
+  const normalizedEmail = normalizeEmailAddress(email);
+  if (!normalizedEmail) return null;
+  const encoded = Buffer.from(normalizedEmail)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+  return `email_${encoded}`;
+}
+
 function getFirestoreDb() {
   try {
     return admin.apps.length ? admin.firestore() : null;
@@ -47,6 +58,21 @@ async function setStoredUserProfile(db, userId, profile) {
 async function listStoredUsers(db) {
   const realtimeSnap = await db.ref('users').once('value').catch(() => null);
   return realtimeSnap?.val?.() || {};
+}
+
+async function isAltWhitelistedForEmail(db, email) {
+  const normalizedEmail = normalizeEmailAddress(email);
+  if (!normalizedEmail) return false;
+
+  const emailKey = getAltWhitelistEmailKey(normalizedEmail);
+  if (emailKey) {
+    const directSnapshot = await db.ref(`altWhitelist/${emailKey}`).once('value').catch(() => null);
+    if (directSnapshot?.exists?.()) return true;
+  }
+
+  const whitelistSnapshot = await db.ref('altWhitelist').once('value').catch(() => null);
+  const whitelist = whitelistSnapshot?.val?.() || {};
+  return Object.values(whitelist).some((entry) => normalizeEmailAddress(entry?.email) === normalizedEmail);
 }
 
 async function ensureUserProfileExists(db, user, {
@@ -92,6 +118,7 @@ async function ensureUserProfileExists(db, user, {
 
 async function assertRegistrationAllowed(db, {
   firebaseUid = null,
+  email = null,
   clientIP = 'unknown',
   age = null
 } = {}) {
@@ -100,6 +127,14 @@ async function assertRegistrationAllowed(db, {
     error.status = 400;
     error.code = 'AGE_VERIFICATION_FAILED';
     throw error;
+  }
+
+  const uidWhitelisted = firebaseUid
+    ? (await db.ref(`altWhitelist/${firebaseUid}`).once('value').catch(() => null))?.exists?.() === true
+    : false;
+  const emailWhitelisted = await isAltWhitelistedForEmail(db, email);
+  if (uidWhitelisted || emailWhitelisted) {
+    return;
   }
 
   if (clientIP && clientIP !== 'unknown') {
@@ -142,6 +177,8 @@ module.exports = {
   AUTH_SESSION_COOKIE_NAME,
   AUTH_SESSION_DURATION_MS,
   normalizeEmailAddress,
+  getAltWhitelistEmailKey,
+  isAltWhitelistedForEmail,
   ensureUserProfileExists,
   assertRegistrationAllowed,
   setAuthSessionCookie,

@@ -232,42 +232,76 @@
                 min-width: 0;
             }
         }
+
+        .auth-simple-shell.onboarding-simple-shell {
+            max-width: 620px;
+            margin-top: 3rem;
+        }
+
+        .onboarding-simple-shell .page-header {
+            padding: 0;
+            margin-bottom: 1rem;
+            border: 0;
+            border-radius: 0;
+            background: transparent;
+            box-shadow: none;
+            text-align: center;
+        }
+
+        .onboarding-simple-shell .page-header::after {
+            display: none;
+        }
+
+        .onboarding-simple-shell .page-title {
+            font-size: 2rem;
+        }
+
+        .onboarding-simple-shell .page-subtitle {
+            margin: 0 auto;
+            color: var(--text-muted);
+        }
+
+        .onboarding-simple-shell .onboarding-help-callout {
+            box-shadow: none;
+        }
+
+        .onboarding-simple-shell .onboarding-progress,
+        .onboarding-simple-shell .onboarding-card {
+            border-radius: 18px;
+            background: var(--card-bg);
+            box-shadow: var(--shadow);
+        }
+
+        .onboarding-simple-shell .onboarding-card {
+            padding: 1.4rem;
+        }
+
+        .onboarding-simple-shell .server-item,
+        .onboarding-simple-shell .verification-code-display {
+            border-radius: 8px;
+        }
+
+        .onboarding-simple-shell .gamemode-selection-grid {
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        }
     </style>
 
     <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script defer src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 </head>
 <body>
     <!-- Navigation -->
-    <nav class="navbar">
+    <nav class="navbar auth-simple-header">
         <div class="container navbar-content">
             <a href="index.html" class="navbar-brand">
                 <img src="assets/vanilla.svg" alt="MC Leaderboards" class="navbar-logo"> MC Leaderboards
-                <span class="beta-badge">BETA</span>
             </a>
-            <div class="navbar-search-wrapper">
-                <div class="navbar-search">
-                    <i class="fas fa-search navbar-search-icon"></i>
-                    <input type="text"
-                           class="navbar-search-input"
-                           id="searchInput"
-                           placeholder="Search player..."
-                           autocomplete="off">
-                </div>
-            </div>
-            <ul class="navbar-nav" id="navbarNav">
-                <li><a href="#" onclick="handleLogout()">Logout</a></li>
-            </ul>
-            <button class="hamburger" id="hamburgerBtn" onclick="toggleMobileMenu()">
-                <i class="fas fa-bars"></i>
-            </button>
         </div>
     </nav>
 
     <!-- Main Content -->
-    <main class="container onboarding-container" style="margin-top: 2rem; margin-bottom: 2rem;">
+    <main class="container auth-simple-shell onboarding-container onboarding-simple-shell">
         <!-- Page Header -->
         <div class="page-header">
             <h1 class="page-title">Welcome to MC Leaderboards!</h1>
@@ -535,24 +569,6 @@
 
     </main>
 
-    <!-- Footer -->
-    <footer>
-        <div class="container">
-            <div class="footer-brand">
-                <img src="assets/vanilla.svg" alt="MC Leaderboards" class="footer-logo">
-                <span>MC Leaderboards</span>
-            </div>
-            <div class="footer-links">
-                <a href="rules.html">Rules</a>
-                <a href="/privacy-policy.html">Privacy Policy</a>
-                <a href="/terms-of-service.html">Terms of Service</a>
-                <a href="support.html">Support</a>
-                <a href="blacklisted.html">Blacklisted</a>
-            </div>
-            <p class="footer-copyright">MC Leaderboards &copy; 2025. All rights reserved.</p>
-        </div>
-    </footer>
-
     <!-- Scripts -->
     <script src="js/config.js"></script>
     <script src="js/dev-mode-toggle.js"></script>
@@ -565,7 +581,7 @@
     <script src="js/auth-guard.js"></script>
     <script src="js/navigation.js"></script>
     <script src="js/ui-enhancements.js"></script>
-    <script src="js/onboarding.js"></script>
+    <script src="js/onboarding.js?v=20260501"></script>
     <script>
         // Copy server address to clipboard
         function copyToClipboard(text) {

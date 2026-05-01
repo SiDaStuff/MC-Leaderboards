@@ -19,6 +19,8 @@ const logger = require('./logger');
 const {
   AUTH_SESSION_COOKIE_NAME,
   ensureUserProfileExists: baseEnsureUserProfileExists,
+  getAltWhitelistEmailKey,
+  isAltWhitelistedForEmail,
   setAuthSessionCookie: applyAuthSessionCookie,
   clearAuthSessionCookie: removeAuthSessionCookie
 } = require('./services/auth-service');
@@ -913,10 +915,10 @@ async function deleteSecurityLogEntry(logId) {
 }
 
 async function createSupportTicketRecord(ticket, initialMessage) {
-  const ticketId = fsdb ? getFirestoreCollectionRef('supportTickets').doc().id : db.ref('supportTickets').push().key;
-  const messageId = fsdb
-    ? getFirestoreCollectionRef(`supportTickets/${ticketId}/messages`).doc().id
-    : db.ref(`supportMessages/${ticketId}`).push().key;
+  const ticketId = db.ref('supportTickets').push().key
+    || (fsdb ? getFirestoreCollectionRef('supportTickets').doc().id : crypto.randomUUID());
+  const messageId = db.ref(`supportMessages/${ticketId}`).push().key
+    || (fsdb ? getFirestoreCollectionRef(`supportTickets/${ticketId}/messages`).doc().id : crypto.randomUUID());
   const normalizedTicket = sanitizeFirebaseValue({
     ...(ticket || {}),
     id: ticketId
@@ -927,16 +929,26 @@ async function createSupportTicketRecord(ticket, initialMessage) {
     ticketId
   });
 
+  await Promise.all([
+    db.ref(`supportTickets/${ticketId}`).set(normalizedTicket),
+    db.ref(`supportMessages/${ticketId}/${messageId}`).set(normalizedMessage)
+  ]);
+
   if (fsdb) {
-    await Promise.all([
+    const mirrorResults = await Promise.allSettled([
       fsWrite(`supportTickets/${ticketId}`, normalizedTicket, false),
       fsWrite(`supportTickets/${ticketId}/messages/${messageId}`, normalizedMessage, false)
     ]);
-  } else {
-    await Promise.all([
-      db.ref(`supportTickets/${ticketId}`).set(normalizedTicket),
-      db.ref(`supportMessages/${ticketId}/${messageId}`).set(normalizedMessage)
-    ]);
+
+    mirrorResults.forEach((result, index) => {
+      if (result.status === 'rejected' || result.value === false) {
+        logger.warn('Support ticket Firestore mirror write failed', {
+          ticketId,
+          target: index === 0 ? 'ticket' : 'message',
+          error: result.reason || null
+        });
+      }
+    });
   }
 
   return {
@@ -1010,29 +1022,51 @@ async function listSupportTicketMessages(ticketId) {
 
 async function addSupportTicketMessage(ticketId, message) {
   if (!ticketId) return null;
-  if (!fsdb) {
-    const messageRef = db.ref(`supportMessages/${ticketId}`).push();
-    const payload = sanitizeFirebaseValue({
-      ...(message || {}),
-      ticketId,
-      id: messageRef.key
-    });
-    await messageRef.set(payload);
-    return payload;
-  }
-  return fsCreate(`supportTickets/${ticketId}/messages`, {
+  const messageRef = db.ref(`supportMessages/${ticketId}`).push();
+  const fallbackId = fsdb ? getFirestoreCollectionRef(`supportTickets/${ticketId}/messages`).doc().id : crypto.randomUUID();
+  const messageId = messageRef.key || fallbackId;
+  const payload = sanitizeFirebaseValue({
     ...(message || {}),
-    ticketId
+    ticketId,
+    id: messageId
   });
+
+  await db.ref(`supportMessages/${ticketId}/${messageId}`).set(payload);
+
+  if (fsdb) {
+    const mirrored = await fsWrite(`supportTickets/${ticketId}/messages/${messageId}`, payload, false);
+    if (mirrored === false) {
+      logger.warn('Support ticket message Firestore mirror write failed', { ticketId, messageId });
+    }
+  }
+
+  return payload;
 }
 
 async function updateSupportTicketRecord(ticketId, updates) {
   if (!ticketId) return false;
-  if (!fsdb) {
-    await db.ref(`supportTickets/${ticketId}`).update(sanitizeFirebaseValue(updates));
-    return true;
+  const payload = sanitizeFirebaseValue(updates);
+  const realtimeRef = db.ref(`supportTickets/${ticketId}`);
+  const realtimeSnapshot = await realtimeRef.once('value').catch(() => null);
+
+  if (realtimeSnapshot?.exists?.()) {
+    await realtimeRef.update(payload);
+  } else {
+    const firestoreTicket = await fsRead(`supportTickets/${ticketId}`);
+    await realtimeRef.set(sanitizeFirebaseValue({
+      ...(firestoreTicket || {}),
+      id: ticketId,
+      ...payload
+    }));
   }
-  return fsWrite(`supportTickets/${ticketId}`, updates, true);
+
+  if (fsdb) {
+    const mirrored = await fsWrite(`supportTickets/${ticketId}`, payload, true);
+    if (mirrored === false) {
+      logger.warn('Support ticket Firestore mirror update failed', { ticketId });
+    }
+  }
+  return true;
 }
 
 async function listStoredMatchHistoryForUsername(normalizedUsername, player = null) {
@@ -1578,8 +1612,22 @@ const messageLimiter = rateLimit({
   }
 });
 
+const supportTicketLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 8, // Ticket creation and support actions should be deliberate
+  message: 'Too many support requests. Please wait a few minutes and try again.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return req.user?.uid || getClientIP(req);
+  }
+});
+
 app.use('/api/', (req, res, next) => {
   if (req.path.startsWith('/admin/')) {
+    return next();
+  }
+  if (req.method === 'GET' && req.path.startsWith('/users/me')) {
     return next();
   }
   return limiter(req, res, next);
@@ -4393,8 +4441,13 @@ async function detectAltAccount(email, clientIP, minecraftUsername = null) {
     const whitelistRef = db.ref('altWhitelist');
     const whitelistSnapshot = await whitelistRef.once('value');
     const whitelist = whitelistSnapshot.val() || {};
+    const normalizedEmail = String(email || '').trim().toLowerCase();
 
     // Check if this account is whitelisted
+    if (await isAltWhitelistedForEmail(db, normalizedEmail)) {
+      return { isAlt: false, reason: 'Email is whitelisted' };
+    }
+
     for (const [uid, userData] of Object.entries(allUsers)) {
       if ((userData.email === email || userData.firebaseUid === email) && whitelist[uid]) {
         return { isAlt: false, reason: 'Account is whitelisted' };
@@ -4594,7 +4647,8 @@ async function enforceTrustedTierListAccess(userId, { profile = null, clientIP =
   }
 
   const whitelisted = await isUserAltWhitelisted(userId);
-  if (whitelisted) {
+  const emailWhitelisted = await isAltWhitelistedForEmail(db, resolvedProfile.email);
+  if (whitelisted || emailWhitelisted) {
     return { allowed: true, reason: 'alt_whitelist' };
   }
 
@@ -8878,7 +8932,7 @@ function buildSupportSubject({ category, urgency, description }) {
 /**
  * POST /api/support/tickets - Submit support ticket (one active ticket per user)
  */
-app.post('/api/support/tickets', verifyAuth, requireRecaptcha, async (req, res) => {
+app.post('/api/support/tickets', verifyAuth, supportTicketLimiter, requireRecaptcha, async (req, res) => {
   try {
     const category = normalizeSupportText(req.body?.category, 32).toLowerCase();
     const urgency = normalizeSupportText(req.body?.urgency, 16).toLowerCase();
@@ -8983,7 +9037,7 @@ app.post('/api/support/tickets', verifyAuth, requireRecaptcha, async (req, res) 
 /**
  * POST /api/support/guest-ticket - Submit signed-out account issue ticket only
  */
-app.post('/api/support/guest-ticket', requireRecaptcha, async (req, res) => {
+app.post('/api/support/guest-ticket', supportTicketLimiter, requireRecaptcha, async (req, res) => {
   try {
     const category = normalizeSupportText(req.body?.category, 32).toLowerCase();
     const email = normalizeSupportText(req.body?.email, 180).toLowerCase();
@@ -9103,7 +9157,7 @@ app.get('/api/support/tickets/me', verifyAuth, async (req, res) => {
 /**
  * POST /api/support/tickets/:ticketId/messages - Reply to active support ticket
  */
-app.post('/api/support/tickets/:ticketId/messages', verifyAuth, requireRecaptcha, async (req, res) => {
+app.post('/api/support/tickets/:ticketId/messages', verifyAuth, messageLimiter, requireRecaptcha, async (req, res) => {
   try {
     const { ticketId } = req.params;
     const message = normalizeSupportText(req.body?.message, 2000);
@@ -9154,7 +9208,7 @@ app.post('/api/support/tickets/:ticketId/messages', verifyAuth, requireRecaptcha
 /**
  * POST /api/support/tickets/:ticketId/close - Close own support ticket
  */
-app.post('/api/support/tickets/:ticketId/close', verifyAuth, requireRecaptcha, async (req, res) => {
+app.post('/api/support/tickets/:ticketId/close', verifyAuth, supportTicketLimiter, requireRecaptcha, async (req, res) => {
   try {
     const { ticketId } = req.params;
     const ticket = await getSupportTicketRecord(ticketId);
@@ -9236,7 +9290,7 @@ app.get('/api/admin/support/tickets/:ticketId', verifyAuthAndNotBanned, verifyAd
 /**
  * POST /api/admin/support/tickets/:ticketId/messages - Admin reply to ticket
  */
-app.post('/api/admin/support/tickets/:ticketId/messages', verifyAuthAndNotBanned, verifyAdmin, requireRecaptcha, async (req, res) => {
+app.post('/api/admin/support/tickets/:ticketId/messages', adminLimiter, verifyAuthAndNotBanned, verifyAdmin, requireRecaptcha, async (req, res) => {
   try {
     if (!adminHasCapability(req, 'users:view') && !adminHasCapability(req, 'support:manage')) {
       return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Support ticket access required' });
@@ -9281,6 +9335,33 @@ app.post('/api/admin/support/tickets/:ticketId/messages', verifyAuthAndNotBanned
       })
     ]);
 
+    await writeAuditLogEntry({
+      action: 'support_ticket_reply',
+      adminUid: req.user.uid,
+      adminEmail: req.user.email || '',
+      ticketId,
+      timestamp: now,
+      ipAddress: getClientIP(req)
+    }).catch((auditError) => {
+      logger.warn('Failed to audit support ticket reply', { ticketId, error: auditError });
+    });
+
+    if (ticket.userId) {
+      await sendInboxMessage(ticket.userId, {
+        title: 'Support replied to your ticket',
+        message: `Staff replied to support ticket #${ticketId}. Open Support to continue the conversation.`,
+        type: 'support_ticket',
+        from: 'Support',
+        metadata: {
+          event: 'support_ticket_reply',
+          ticketId,
+          status: 'awaiting_user'
+        }
+      }).catch((inboxError) => {
+        console.warn('Failed to send support reply inbox message:', inboxError.message);
+      });
+    }
+
     res.json({ success: true, message: 'Reply sent' });
   } catch (error) {
     console.error('Error replying to support ticket as admin:', error);
@@ -9291,7 +9372,7 @@ app.post('/api/admin/support/tickets/:ticketId/messages', verifyAuthAndNotBanned
 /**
  * POST /api/admin/support/tickets/:ticketId/status - Update support ticket status (Admin only)
  */
-app.post('/api/admin/support/tickets/:ticketId/status', verifyAuthAndNotBanned, verifyAdmin, requireRecaptcha, async (req, res) => {
+app.post('/api/admin/support/tickets/:ticketId/status', adminLimiter, verifyAuthAndNotBanned, verifyAdmin, requireRecaptcha, async (req, res) => {
   try {
     if (!adminHasCapability(req, 'users:view') && !adminHasCapability(req, 'support:manage')) {
       return res.status(403).json({ error: true, code: 'PERMISSION_DENIED', message: 'Support ticket access required' });
@@ -9317,6 +9398,18 @@ app.post('/api/admin/support/tickets/:ticketId/status', verifyAuthAndNotBanned, 
       updates.closedBy = 'admin';
     }
     await updateSupportTicketRecord(ticketId, updates);
+
+    await writeAuditLogEntry({
+      action: 'support_ticket_status_update',
+      adminUid: req.user.uid,
+      adminEmail: req.user.email || '',
+      ticketId,
+      status,
+      timestamp: updates.updatedAt,
+      ipAddress: getClientIP(req)
+    }).catch((auditError) => {
+      logger.warn('Failed to audit support ticket status update', { ticketId, status, error: auditError });
+    });
 
     if (ticket.userId && (status === 'resolved' || status === 'closed')) {
       await sendInboxMessage(ticket.userId, {
@@ -19282,8 +19375,9 @@ app.post('/api/admin/reset-cooldown', adminLimiter, verifyAuth, verifyAdmin, asy
 app.post('/api/admin/alt-whitelist', verifyAuth, verifyAdmin, async (req, res) => {
   try {
     const { identifier } = req.body; // email or firebase UID
+    const safeIdentifier = String(identifier || '').trim();
 
-    if (!identifier) {
+    if (!safeIdentifier) {
       return res.status(400).json({
         error: true,
         code: 'MISSING_IDENTIFIER',
@@ -19298,31 +19392,47 @@ app.post('/api/admin/alt-whitelist', verifyAuth, verifyAdmin, async (req, res) =
 
     let targetUid = null;
     for (const [uid, userData] of Object.entries(allUsers)) {
-      if (userData.email === identifier || uid === identifier) {
+      if (String(userData.email || '').toLowerCase() === safeIdentifier.toLowerCase() || uid === safeIdentifier) {
         targetUid = uid;
         break;
       }
     }
 
+    let whitelistKey = targetUid;
+    let whitelistEmail = targetUid ? allUsers[targetUid].email : null;
+    let pendingEmail = false;
+
     if (!targetUid) {
-      return res.status(404).json({
-        error: true,
-        code: 'USER_NOT_FOUND',
-        message: 'User not found'
-      });
+      const normalizedEmail = String(safeIdentifier || '').trim().toLowerCase();
+      const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
+      if (!looksLikeEmail) {
+        return res.status(404).json({
+          error: true,
+          code: 'USER_NOT_FOUND',
+          message: 'User not found. Enter an email address to whitelist a future signup.'
+        });
+      }
+
+      whitelistKey = getAltWhitelistEmailKey(normalizedEmail);
+      whitelistEmail = normalizedEmail;
+      pendingEmail = true;
     }
 
     // Add to whitelist
-    const whitelistRef = db.ref(`altWhitelist/${targetUid}`);
+    const whitelistRef = db.ref(`altWhitelist/${whitelistKey}`);
     await whitelistRef.set({
       whitelistedAt: new Date().toISOString(),
       whitelistedBy: req.user.uid,
-      email: allUsers[targetUid].email
+      email: whitelistEmail,
+      pendingEmail,
+      firebaseUid: targetUid || null
     });
 
     res.json({
       success: true,
-      message: 'Account added to alt detection whitelist'
+      message: pendingEmail
+        ? 'Email added to alt detection whitelist for future signup'
+        : 'Account added to alt detection whitelist'
     });
 
   } catch (error) {

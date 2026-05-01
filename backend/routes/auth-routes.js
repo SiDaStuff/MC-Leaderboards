@@ -70,11 +70,12 @@ function registerAuthRoutes({
 
   app.post('/api/auth/register-preflight', requireRecaptcha, async (req, res) => {
     try {
-      const { clientIP, age, firebaseUid = null } = req.body || {};
+      const { clientIP, age, firebaseUid = null, email = null } = req.body || {};
       const realClientIP = clientIP || getClientIP(req);
 
       await assertRegistrationAllowed(db, {
         firebaseUid,
+        email,
         clientIP: realClientIP,
         age
       });
@@ -107,6 +108,7 @@ function registerAuthRoutes({
 
       await assertRegistrationAllowed(db, {
         firebaseUid,
+        email,
         clientIP: realClientIP,
         age
       });
@@ -233,10 +235,10 @@ function registerAuthRoutes({
       });
     } catch (error) {
       console.error('Error registering user:', error);
-      return res.status(500).json({
+      return res.status(error.status || 500).json({
         error: true,
-        code: 'SERVER_ERROR',
-        message: 'Error registering user'
+        code: error.code || 'SERVER_ERROR',
+        message: error.message || 'Error registering user'
       });
     }
   });

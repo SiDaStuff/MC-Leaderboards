@@ -16,7 +16,7 @@ function fetchSignupClientIp() {
   return cachedSignupClientIpPromise;
 }
 
-async function preflightSignup({ age, clientIP = null } = {}) {
+async function preflightSignup({ age, clientIP = null, email = null } = {}) {
   const recaptchaAction = 'post_auth_register_preflight';
   const recaptchaToken = await apiService.getRecaptchaToken(recaptchaAction);
   const response = await fetch('/api/auth/register-preflight', {
@@ -29,6 +29,7 @@ async function preflightSignup({ age, clientIP = null } = {}) {
     },
     body: JSON.stringify({
       age,
+      ...(email ? { email } : {}),
       ...(clientIP ? { clientIP } : {})
     })
   });
@@ -253,7 +254,7 @@ window.handleSignup = async function handleSignup(event) {
     }
 
     const clientIP = await fetchSignupClientIp();
-    await preflightSignup({ age, clientIP });
+    await preflightSignup({ age, clientIP, email });
 
     createdUser = await firebaseAuthService.signUp(email, password);
     await ensureApiTokenReady(createdUser);
@@ -328,7 +329,6 @@ window.handleGoogleSignup = async function handleGoogleSignup(event) {
     }
 
     const clientIP = await fetchSignupClientIp();
-    await preflightSignup({ age, clientIP });
     const user = await firebaseAuthService.signUpWithGoogle({ age, clientIP });
     await finalizeSignupProfile(user?.uid || null);
 

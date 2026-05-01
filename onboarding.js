@@ -135,7 +135,7 @@ async function initOnboarding() {
 
   // Check current onboarding status
   try {
-    const profile = await apiService.getProfile();
+    const profile = AppState.getProfile() || await apiService.getProfile();
     AppState.setProfile(profile);
 
     // Check if onboarding is already completed
@@ -197,7 +197,10 @@ async function initOnboarding() {
     }
 
     // Show skip option for all users
-    document.getElementById('skipSection').style.display = 'block';
+    const skipSection = document.getElementById('skipSection');
+    if (skipSection) {
+      skipSection.style.display = 'block';
+    }
 
     // Set up event listeners for buttons
     // The save preferences button handles completion
@@ -604,6 +607,7 @@ function stopVerificationCheck() {
 async function checkVerificationStatus() {
   try {
     const profile = await apiService.getProfile();
+    AppState.setProfile(profile);
 
     if (profile.minecraftVerified) {
       // Verification complete!
@@ -1005,7 +1009,7 @@ function handleBackToGamemodeSelection() {
  * Show error message
  */
 function showError(message) {
-  const container = document.querySelector('main .container');
+  const container = document.querySelector('main.container') || document.querySelector('main .container') || document.querySelector('main');
   if (container) {
     container.innerHTML = `
       <div class="alert alert-error">

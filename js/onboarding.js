@@ -316,7 +316,7 @@ async function initOnboarding() {
 
   // Check current onboarding status
   try {
-    const profile = await apiService.getProfile();
+    const profile = AppState.getProfile() || await apiService.getProfile();
     AppState.setProfile(profile);
 
     // Check if onboarding is already completed
@@ -1361,7 +1361,7 @@ function handleBackToGamemodeSelection() {
  * Show error message
  */
 function showError(message) {
-  const container = document.querySelector('main .container');
+  const container = document.querySelector('main.container') || document.querySelector('main .container') || document.querySelector('main');
   if (container) {
     container.innerHTML = `
       <div class="alert alert-error">
