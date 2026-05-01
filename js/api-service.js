@@ -15,6 +15,9 @@ class ApiService {
     this._recaptchaScriptLoad = null;
     this.cacheInvalidationMap = new Map([
       ['/users/me', ['/users/me', '/users/me/standing', '/users/me/recent-matches', '/dashboard/stats']],
+      ['/onboarding/save-preferences', ['/users/me', '/onboarding/status', '/dashboard/stats']],
+      ['/onboarding/complete', ['/users/me', '/onboarding/status', '/dashboard/stats']],
+      ['/auth/cleanup-minecraft', ['/users/me', '/auth/verification-code', '/onboarding/status']],
       ['/queue/join', ['/queue/status', '/queue/stats', '/dashboard/stats']],
       ['/queue/leave', ['/queue/status', '/queue/stats', '/dashboard/stats']],
       ['/match/active', ['/dashboard/stats']],
@@ -261,7 +264,8 @@ class ApiService {
     const url = `${this.baseURL}${endpoint}`;
     const token = this.getToken();
     const method = (options.method || 'GET').toUpperCase();
-    const cacheKey = `${method}:${endpoint}:${options._forceRecaptcha ? 'forced-recaptcha' : 'default'}`;
+    const cacheMode = options.noCache ? 'no-cache' : 'cache';
+    const cacheKey = `${method}:${endpoint}:${options._forceRecaptcha ? 'forced-recaptcha' : 'default'}:${cacheMode}`;
     const retryCount = Number(options._retryCount || 0);
     
     // Only cache GET requests

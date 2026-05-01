@@ -353,6 +353,12 @@ function chooseFresherRecord(firestoreRecord, realtimeRecord) {
     : { source: 'firestore', record: firestoreRecord };
 }
 
+function invalidateStoredUserProfileCache(userId) {
+  if (userId && global.__mclbUserProfileCache) {
+    global.__mclbUserProfileCache.delete(userId);
+  }
+}
+
 async function getStoredUserProfile(userId, { syncFallback = false } = {}) {
   if (!userId) return null;
 
@@ -419,9 +425,7 @@ async function setStoredUserProfile(userId, profile, { merge = false } = {}) {
   }
 
   const results = await Promise.allSettled(writes);
-  if (global.__mclbUserProfileCache) {
-    global.__mclbUserProfileCache.delete(userId);
-  }
+  invalidateStoredUserProfileCache(userId);
   return results.some((result) => result.status === 'fulfilled' && result.value !== false);
 }
 
@@ -431,9 +435,7 @@ async function deleteStoredUserProfile(userId) {
     db.ref(`users/${userId}`).remove(),
     fsDelete(`users/${userId}`)
   ]);
-  if (global.__mclbUserProfileCache) {
-    global.__mclbUserProfileCache.delete(userId);
-  }
+  invalidateStoredUserProfileCache(userId);
   return results.some((result) => result.status === 'fulfilled' && result.value !== false);
 }
 
@@ -3279,6 +3281,7 @@ async function ensureMinecraftUuidLinkedForUser(userId, profileInput = null) {
     }
 
     await userRef.update(updates);
+    invalidateStoredUserProfileCache(userId);
 
     const playersRef = db.ref('players');
     const playersSnapshot = await playersRef.once('value');
@@ -5583,6 +5586,7 @@ app.post('/api/users/me/minecraft', verifyAuthAndNotBanned, requireRecaptcha, as
       pendingMinecraftUUID: mojangUuid,
       updatedAt: new Date().toISOString()
     });
+    invalidateStoredUserProfileCache(req.user.uid);
     
     // Generate 6-digit verification code
     const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -6832,6 +6836,7 @@ app.post('/api/auth/cleanup-minecraft', verifyAuth, async (req, res) => {
       pendingMinecraftUUID: null,
       verifiedAt: null
     });
+    invalidateStoredUserProfileCache(userId);
 
     // Clean up ALL pending verifications for this user (active and expired)
     const pendingVerificationsRef = db.ref('pendingVerifications');
@@ -6977,6 +6982,7 @@ app.post('/api/auth/verify-minecraft', async (req, res) => {
       usernameLocked: true, // Lock username changes once verified
       verifiedAt: new Date().toISOString()
     });
+    invalidateStoredUserProfileCache(userId);
 
     // Remove the pending verification
     await pendingVerificationsRef.child(verificationKey).remove();
@@ -12956,6 +12962,7 @@ app.post('/api/onboarding/save-preferences', verifyAuthAndNotBanned, requireReca
       selectedGamemodes: [...new Set([...(userProfile.selectedGamemodes || []), ...selectedGamemodes])],
       updatedAt: new Date().toISOString()
     });
+    invalidateStoredUserProfileCache(req.user.uid);
 
     // Update player record with Elo ratings
     const playerUpdates = {
@@ -13210,6 +13217,7 @@ app.post('/api/onboarding/complete', verifyAuth, async (req, res) => {
       onboardingCompletedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
+    invalidateStoredUserProfileCache(req.user.uid);
 
     // Send welcome inbox message
     await sendInboxMessage(req.user.uid, {
@@ -17337,6 +17345,7 @@ app.post('/api/admin/players/force-auth', adminLimiter, verifyAuth, verifyAdmin,
         minecraftVerified: false,
         updatedAt: new Date().toISOString()
       });
+      invalidateStoredUserProfileCache(existingLinkUserId);
     }
 
     // Force link username to target account
@@ -17345,6 +17354,7 @@ app.post('/api/admin/players/force-auth', adminLimiter, verifyAuth, verifyAdmin,
       minecraftVerified: true,
       updatedAt: new Date().toISOString()
     });
+    invalidateStoredUserProfileCache(userId);
 
     // Ensure player record exists or update it
     const playersRef = db.ref('players');

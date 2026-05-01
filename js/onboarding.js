@@ -10,6 +10,32 @@ let verificationCodeCache = null; // Cache verification code result
 let verificationCodeCacheTime = 0; // Cache timestamp
 let onboardingRealtimeConnection = null;
 let onboardingRealtimeRetryTimeout = null;
+let onboardingInitPromise = null;
+let onboardingRedirectInProgress = false;
+
+async function loadFreshOnboardingProfile() {
+  apiService.clearCache('/users/me');
+  const profile = typeof apiService.getProfileQuick === 'function'
+    ? await apiService.getProfileQuick()
+    : await apiService.request('/users/me', { method: 'GET', noCache: true, timeout: 5000 });
+  AppState.setProfile(profile);
+  return profile;
+}
+
+function redirectToDashboardOnce(delayMs = 0) {
+  if (onboardingRedirectInProgress) return;
+  onboardingRedirectInProgress = true;
+
+  window.setTimeout(async () => {
+    const canRedirect = await checkBanBeforeRedirect();
+    if (canRedirect) {
+      apiService.clearCache('/users/me');
+      window.location.replace('dashboard.html');
+      return;
+    }
+    onboardingRedirectInProgress = false;
+  }, Math.max(0, delayMs));
+}
 
 async function applyRealtimeOnboardingProfile(profile) {
   if (!profile) return;
@@ -18,7 +44,7 @@ async function applyRealtimeOnboardingProfile(profile) {
 
   if (profile.onboardingCompleted === true) {
     showThemedPopup('Onboarding Complete!', 'You have completed onboarding. Redirecting to dashboard...');
-    setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
+    redirectToDashboardOnce(1200);
     return;
   }
 
@@ -64,7 +90,7 @@ function startOnboardingSSE() {
     if (eventName === 'onboarding') {
       if (data.completed) {
         showThemedPopup('Onboarding Complete!', 'You have completed onboarding. Redirecting to dashboard...');
-        setTimeout(() => { window.location.href = 'dashboard.html'; }, 2000);
+        redirectToDashboardOnce(1200);
       }
       return;
     }
@@ -303,6 +329,18 @@ async function checkBanBeforeRedirect() {
  * Initialize onboarding
  */
 async function initOnboarding() {
+  if (onboardingInitPromise) {
+    return onboardingInitPromise;
+  }
+
+  onboardingInitPromise = initOnboardingInternal().finally(() => {
+    onboardingInitPromise = null;
+  });
+
+  return onboardingInitPromise;
+}
+
+async function initOnboardingInternal() {
   // Wait for DOM to be ready
   if (!document.getElementById('step1') || !document.getElementById('step2') ||
       !document.getElementById('step1Card') || !document.getElementById('step2Card')) {
@@ -316,8 +354,7 @@ async function initOnboarding() {
 
   // Check current onboarding status
   try {
-    const profile = AppState.getProfile() || await apiService.getProfile();
-    AppState.setProfile(profile);
+    const profile = await loadFreshOnboardingProfile();
 
     // Check if onboarding is already completed
     if (profile.onboardingCompleted === true) {
@@ -332,13 +369,7 @@ async function initOnboarding() {
         showConfirmButton: false
       });
 
-        // Check for ban before redirecting
-      setTimeout(async () => {
-        const canRedirect = await checkBanBeforeRedirect();
-        if (canRedirect) {
-          window.location.href = 'dashboard.html';
-        }
-      }, 2000);
+      redirectToDashboardOnce(1500);
       
         return;
     }
@@ -1264,15 +1295,10 @@ window.handleSavePreferences = async function() {
     await apiService.saveOnboardingPreferences(selectedGamemodes, gamemodeSkillLevels);
 
     // Double-check that onboarding isn't already completed
-    const currentProfile = await apiService.getProfile();
+    const currentProfile = await loadFreshOnboardingProfile();
     if (currentProfile.onboardingCompleted === true) {
       // Already completed, just redirect
-      setTimeout(async () => {
-        const canRedirect = await checkBanBeforeRedirect();
-        if (canRedirect) {
-          window.location.href = 'dashboard.html';
-        }
-      }, 1000);
+      redirectToDashboardOnce(1000);
       return;
     }
 
@@ -1304,6 +1330,7 @@ window.handleSavePreferences = async function() {
 
     // Mark onboarding as completed
     await apiService.completeOnboarding();
+    await loadFreshOnboardingProfile().catch(() => null);
 
     Swal.fire({
       icon: 'success',
@@ -1314,15 +1341,8 @@ window.handleSavePreferences = async function() {
     });
 
     // Redirect to dashboard after a short delay
-    setTimeout(async () => {
-      // Clear API cache to ensure fresh data on dashboard
-      apiService.clearCache();
-      
-      const canRedirect = await checkBanBeforeRedirect();
-      if (canRedirect) {
-        window.location.href = 'dashboard.html';
-      }
-    }, 3000);
+    apiService.clearCache();
+    redirectToDashboardOnce(2500);
 
   } catch (error) {
     Swal.fire({
