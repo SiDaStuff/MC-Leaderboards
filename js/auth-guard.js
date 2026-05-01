@@ -65,7 +65,21 @@ const REDIRECT_LOOP_WINDOW_MS = 12000;
 const REDIRECT_LOOP_MAX_HOPS = 4;
 
 function getCurrentPageName() {
-  return window.location.pathname.split('/').pop() || 'index.html';
+  const pathname = window.location.pathname || '/';
+  if (pathname === '/' || pathname.endsWith('/')) {
+    return 'index.html';
+  }
+
+  const pageName = pathname.split('/').filter(Boolean).pop() || 'index';
+  const normalizedPage = pageName.replace(/\.html$/i, '') || 'index';
+  return `${normalizedPage}.html`;
+}
+
+function getAuthRedirectTarget(target) {
+  if (typeof routePath === 'function') {
+    return routePath(target);
+  }
+  return target;
 }
 
 function normalizeRedirectTarget(target) {
@@ -232,7 +246,7 @@ async function requireAuth(requireAdmin = false, requireTierTester = false) {
     // Not authenticated - redirect to login
     if (!redirectInProgress) {
       redirectInProgress = true;
-      window.location.href = 'login.html';
+      window.location.href = getAuthRedirectTarget('login.html');
     }
     return false;
   }
@@ -363,11 +377,11 @@ async function requireAuth(requireAdmin = false, requireTierTester = false) {
   }
 
   // Check onboarding completion (skip for onboarding page itself)
-  const currentPage = window.location.pathname.split('/').pop();
+  const currentPage = getCurrentPageName();
   if (currentPage !== 'onboarding.html' && !AppState.isOnboardingCompleted()) {
     if (!redirectInProgress) {
       redirectInProgress = true;
-      window.location.href = 'onboarding.html';
+      window.location.href = getAuthRedirectTarget('onboarding.html');
     }
     return false;
   }
@@ -464,7 +478,7 @@ async function requireGuest() {
             });
           } else if (typeof firebaseAuthService?.signOut === 'function') {
             await firebaseAuthService.signOut().catch(() => null);
-            window.location.href = 'login.html';
+            window.location.href = getAuthRedirectTarget('login.html');
           }
         }
         return false;
@@ -476,7 +490,7 @@ async function requireGuest() {
     // Not banned - redirect based on onboarding completion
     if (!redirectInProgress) {
       redirectInProgress = true;
-      const redirectTarget = (profile && profile.onboardingCompleted) ? 'dashboard.html' : 'onboarding.html';
+      const redirectTarget = getAuthRedirectTarget((profile && profile.onboardingCompleted) ? 'dashboard.html' : 'onboarding.html');
       window.location.href = redirectTarget;
     }
     return false;
