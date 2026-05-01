@@ -42,7 +42,11 @@ function moderationCanContactAdmins() {
 }
 
 function moderationHasAccess() {
-  return moderationCanReviewChatReports() || moderationCanManageChatRestrictions() || moderationCanManageLeaderboardFilters() || moderationCanContactAdmins();
+  return moderationCanReviewChatReports()
+    || moderationCanManageChatRestrictions()
+    || moderationCanManageLeaderboardFilters()
+    || moderationCanContactAdmins()
+    || getModerationAdminCapabilities().size > 0;
 }
 
 function getModerationAdminCapabilities() {
@@ -79,10 +83,79 @@ function buildStaffAdminShortcuts() {
 
   card.classList.toggle('is-visible', shortcuts.length > 0);
   grid.innerHTML = shortcuts.map((shortcut) => `
-    <button type="button" class="btn btn-secondary" onclick="window.location.href='admin.html?tab=${encodeURIComponent(shortcut.tab)}'">
+    <button type="button" class="btn btn-secondary" onclick="activateModerationAdminTool('${escapeHtml(shortcut.tab)}')">
       <i class="fas ${escapeHtml(shortcut.icon)}"></i> ${escapeHtml(shortcut.label)}
     </button>
   `).join('');
+}
+
+const MODERATION_ADMIN_TOOLS = [
+  { id: 'moderation', label: 'Applications & Blacklist', icon: 'fa-ban', requires: ['applications:manage', 'blacklist:view', 'blacklist:manage'], load: () => window.switchModerationTab?.('tester') },
+  { id: 'reported', label: 'Reports', icon: 'fa-flag', requires: ['reports:manage'], load: () => { window.switchReportsTab?.('alt'); window.loadReportedAccounts?.(); } },
+  { id: 'support', label: 'Support', icon: 'fa-life-ring', requires: ['users:view'], load: () => window.loadSupportTickets?.() },
+  { id: 'security-scores', label: 'Security Scores', icon: 'fa-shield-alt', requires: ['audit:view', 'security_scores:view'], load: () => window.loadSecurityScores?.() },
+  { id: 'send-message', label: 'Send Message', icon: 'fa-envelope', requires: ['messages:send', 'users:manage'], load: () => {} },
+  { id: 'banned', label: 'Bans', icon: 'fa-user-slash', requires: ['users:manage', 'bans:manage'], load: () => window.loadBannedAccounts?.() },
+  { id: 'ban-waves', label: 'Ban Waves', icon: 'fa-wave-square', requires: ['blacklist:manage'], load: () => { window.loadBanWaves?.(); window.loadWhitelist?.(); } },
+  { id: 'punish', label: 'Bulk Punish', icon: 'fa-gavel', requires: ['blacklist:manage'], load: () => window.initPunishTab?.() }
+];
+
+function canUseModerationAdminTool(tool) {
+  return tool.requires.some((capability) => moderationAdminHasCapability(capability));
+}
+
+function getVisibleModerationAdminTools() {
+  return MODERATION_ADMIN_TOOLS.filter(canUseModerationAdminTool);
+}
+
+function activateModerationAdminTool(toolId) {
+  const tools = getVisibleModerationAdminTools();
+  const tool = tools.find((entry) => entry.id === toolId) || tools[0];
+  const tabs = document.getElementById('staffOperationsTabs');
+  const card = document.getElementById('staffOperationsCard');
+  if (!tool || !tabs || !card) return;
+
+  card.classList.add('is-visible');
+  MODERATION_ADMIN_TOOLS.forEach((entry) => {
+    const panel = document.getElementById(`${entry.id}Tab`);
+    if (panel) panel.classList.toggle('d-none', entry.id !== tool.id);
+  });
+
+  tabs.querySelectorAll('[data-moderation-admin-tool]').forEach((button) => {
+    const active = button.getAttribute('data-moderation-admin-tool') === tool.id;
+    button.classList.toggle('btn-primary', active);
+    button.classList.toggle('btn-secondary', !active);
+  });
+
+  try {
+    tool.load();
+  } catch (error) {
+    console.error('Failed loading moderation staff operation:', error);
+  }
+}
+
+function buildStaffOperations() {
+  const card = document.getElementById('staffOperationsCard');
+  const tabs = document.getElementById('staffOperationsTabs');
+  if (!card || !tabs) return;
+
+  const tools = getVisibleModerationAdminTools();
+  card.classList.toggle('is-visible', tools.length > 0);
+  tabs.innerHTML = tools.map((tool) => `
+    <button type="button" class="btn btn-secondary" data-moderation-admin-tool="${escapeHtml(tool.id)}" onclick="activateModerationAdminTool('${escapeHtml(tool.id)}')">
+      <i class="fas ${escapeHtml(tool.icon)}"></i> ${escapeHtml(tool.label)}
+    </button>
+  `).join('');
+
+  if (!tools.length) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const requestedTab = String(params.get('tab') || '').trim();
+  if (requestedTab && tools.some((tool) => tool.id === requestedTab)) {
+    activateModerationAdminTool(requestedTab);
+  } else {
+    activateModerationAdminTool(tools[0].id);
+  }
 }
 
 function buildModerationSummary() {
@@ -360,6 +433,7 @@ function renderModerationSections() {
   chatCard?.classList.toggle('is-visible', canReviewChat || canManageChat);
   leaderboardCard?.classList.toggle('is-visible', canManageLeaderboard);
   buildStaffAdminShortcuts();
+  buildStaffOperations();
 
   if (chatIntro) {
     chatIntro.textContent = canManageChat
@@ -418,6 +492,7 @@ window.loadLeaderboardModerationFilters = loadLeaderboardModerationFilters;
 window.submitLeaderboardFilter = submitLeaderboardFilter;
 window.removeLeaderboardFilter = removeLeaderboardFilter;
 window.submitContactAdmins = submitContactAdmins;
+window.activateModerationAdminTool = activateModerationAdminTool;
 
 window.addEventListener('DOMContentLoaded', async () => {
   if (window.mclbLoadingOverlay) {

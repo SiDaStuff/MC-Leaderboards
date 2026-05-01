@@ -76,6 +76,14 @@ function getDashboardAdminCapabilities(profile = {}) {
     return contextCapabilities;
   }
 
+  const staffAdminCapabilities = [
+    ...(Array.isArray(profile?.staffRole?.adminCapabilities) ? profile.staffRole.adminCapabilities : []),
+    ...(Array.isArray(profile?.verifiedStaffRole?.adminCapabilities) ? profile.verifiedStaffRole.adminCapabilities : [])
+  ];
+  if (staffAdminCapabilities.length > 0) {
+    return [...new Set(staffAdminCapabilities)];
+  }
+
   const role = typeof profile?.adminContext?.role === 'string'
     ? profile.adminContext.role
     : (typeof profile?.adminRole === 'string' ? profile.adminRole : (profile?.admin === true ? 'lead_admin' : null));
@@ -373,8 +381,14 @@ function renderStaffActionsSection() {
     open_testing_page: { label: 'Open Testing', icon: 'fa-flask', run: () => openTestingPage() }
   };
 
+  function canOpenAdminShell() {
+    const role = String(profile?.adminContext?.role || profile?.adminRole || '').trim();
+    return profile?.admin === true || role === 'owner' || role === 'lead_admin';
+  }
+
   function openAdminTabShortcut(tab) {
-    window.location.href = `admin.html?tab=${encodeURIComponent(tab)}`;
+    const targetPage = canOpenAdminShell() ? 'admin.html' : 'moderation.html';
+    window.location.href = `${targetPage}?tab=${encodeURIComponent(tab)}`;
   }
 
   const configuredActions = getDashboardRoleActionIds(profile);

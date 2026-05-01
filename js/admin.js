@@ -113,6 +113,14 @@ function getClientAdminCapabilities() {
     return contextCapabilities;
   }
 
+  const staffAdminCapabilities = [
+    ...(Array.isArray(profile?.staffRole?.adminCapabilities) ? profile.staffRole.adminCapabilities : []),
+    ...(Array.isArray(profile?.verifiedStaffRole?.adminCapabilities) ? profile.verifiedStaffRole.adminCapabilities : [])
+  ];
+  if (staffAdminCapabilities.length > 0) {
+    return [...new Set(staffAdminCapabilities)];
+  }
+
   const role = typeof profile?.adminContext?.role === 'string'
     ? profile.adminContext.role
     : (typeof profile?.adminRole === 'string' ? profile.adminRole : (profile?.admin === true ? 'lead_admin' : null));
@@ -140,7 +148,8 @@ function clientStaffHasCapability(capability) {
 
 function canAccessAdminPanel() {
   const profile = AppState.getProfile?.() || AppState.userProfile || {};
-  return profile?.admin === true || typeof profile?.adminRole === 'string';
+  const role = String(profile?.adminContext?.role || profile?.adminRole || '').trim();
+  return profile?.admin === true || role === 'owner' || role === 'lead_admin';
 }
 
 function isAdminTabVisible(tab) {
@@ -212,13 +221,16 @@ async function initAdmin() {
   }
 
   if (!canAccessAdminPanel()) {
+    const hasStaffTools = getClientAdminCapabilities().length > 0 || getClientStaffCapabilities().length > 0;
     Swal.fire({
       icon: 'error',
       title: 'Access Denied',
-      text: 'You do not have access to the admin moderation tools.',
-      confirmButtonText: 'Go to Account'
+      text: hasStaffTools
+        ? 'Your staff tools have moved to the moderation page.'
+        : 'You do not have access to the admin panel.',
+      confirmButtonText: hasStaffTools ? 'Go to Moderation' : 'Go to Account'
     }).then(() => {
-      window.location.href = 'account.html';
+      window.location.href = hasStaffTools ? 'moderation.html' : 'account.html';
     });
     return;
   }
@@ -4446,6 +4458,9 @@ if (typeof window !== 'undefined') {
   window.executeManagementAction = executeManagementAction;
   window.loadBlacklist = loadBlacklist;
   window.loadApplications = loadApplications;
+  window.loadBannedAccounts = loadBannedAccounts;
+  window.loadReportedAccounts = loadReportedAccounts;
+  window.handleBanAccount = handleBanAccount;
 
   // Search / misc handlers referenced by forms in admin.html
   window.handleSearchBanned = handleSearchBanned;
@@ -4461,6 +4476,7 @@ if (typeof window !== 'undefined') {
   window.executeJudgmentDay = executeJudgmentDay;
   window.handleAddToWhitelist = handleAddToWhitelist;
   window.handleRemoveFromWhitelist = handleRemoveFromWhitelist;
+  window.loadWhitelist = loadWhitelist;
   window.switchReportsTab = switchReportsTab;
   window.loadSecurityLogs = loadSecurityLogs;
   window.saveTierTesterAppsOpenSetting = saveTierTesterAppsOpenSetting;
@@ -4471,6 +4487,7 @@ if (typeof window !== 'undefined') {
   window.addPunishUsername = addPunishUsername;
   window.removePunishUsername = removePunishUsername;
   window.executePunishment = executePunishment;
+  window.initPunishTab = initPunishTab;
 }
 
 // NOTE: The global export block above must be closed before defining additional functions.
@@ -6802,9 +6819,16 @@ async function executeBanWave() {
   }
 }
 
-// Initialize on page load
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initAdmin);
-} else {
-  initAdmin();
+// Initialize only on the dedicated admin page. The moderation page reuses selected
+// handlers from this file without granting access to the admin shell.
+function shouldAutoInitAdminPanel() {
+  return Boolean(document.getElementById('adminTabs'));
+}
+
+if (shouldAutoInitAdminPanel()) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAdmin);
+  } else {
+    initAdmin();
+  }
 }

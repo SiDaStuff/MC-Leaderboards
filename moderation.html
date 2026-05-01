@@ -8,7 +8,7 @@
 
     <link rel="stylesheet" href="css/styles.css">
     <link rel="stylesheet" href="css/animations.css">
-    <link rel="stylesheet" href="css/moderation.css">
+    <link rel="stylesheet" href="css/moderation.css?v=20260501">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="js/loading-overlay.js"></script>
 
@@ -73,17 +73,6 @@
                         <i class="fas fa-paper-plane"></i> Send Request
                     </button>
                 </form>
-            </div>
-        </section>
-
-        <section class="card moderation-card-shell" id="staffAdminShortcutsCard">
-            <div class="card-header">
-                <h2 class="card-title">
-                    <i class="fas fa-briefcase"></i> Staff Tools
-                </h2>
-            </div>
-            <div class="card-body moderation-card-body">
-                <div class="moderation-shortcut-grid" id="staffAdminShortcutsGrid"></div>
             </div>
         </section>
 
@@ -175,6 +164,490 @@
                 </div>
             </div>
         </section>
+
+        <section class="card moderation-card-shell" id="staffOperationsCard">
+            <div class="card-header">
+                <h2 class="card-title">
+                    <i class="fas fa-briefcase"></i> Staff Operations
+                </h2>
+            </div>
+            <div class="card-body moderation-card-body">
+                <div class="moderation-card-intro">Access the review and enforcement tools available to your role. Each area is separated so routine work stays focused.</div>
+                <div class="moderation-operation-tabs" id="staffOperationsTabs"></div>
+                <div id="staffOperationsPanels" class="moderation-operation-panels">
+                    <div id="moderationTab" class="tab-content d-none moderation-operation-panel">
+                        <div class="moderation-panel-heading">
+                            <div>
+                                <h3><i class="fas fa-gavel"></i> Applications & Blacklist</h3>
+                                <p>Review tester applications, manage blacklist entries, and apply account restrictions.</p>
+                            </div>
+                        </div>
+                        <div class="moderation-subnav" role="group">
+                            <button type="button" class="btn btn-primary" id="modTabTester" onclick="switchModerationTab('tester')">
+                                <i class="fas fa-star"></i> Applications
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="modTabBlacklist" onclick="switchModerationTab('blacklist')">
+                                <i class="fas fa-ban"></i> Blacklist
+                            </button>
+                            <button type="button" class="btn btn-secondary" id="modTabTools" onclick="switchModerationTab('tools')">
+                                <i class="fas fa-user-shield"></i> Role Tools
+                            </button>
+                        </div>
+
+                        <div id="testerModSection">
+                            <div class="moderation-form-band">
+                                <div>
+                                    <strong><i class="fas fa-toggle-on"></i> Application Intake</strong>
+                                    <p class="text-muted">Open or close Tier Tester applications globally.</p>
+                                </div>
+                                <div class="moderation-inline-controls">
+                                    <label class="form-label moderation-check-label">
+                                        <input type="checkbox" id="tierTesterAppsOpenToggle">
+                                        Applications are open
+                                    </label>
+                                    <button class="btn btn-secondary btn-sm" type="button" onclick="saveTierTesterAppsOpenSetting()" id="saveTierTesterAppsOpenBtn">
+                                        <i class="fas fa-save"></i> Save
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="moderation-filter-row">
+                                <div>
+                                    <label class="form-label" for="testerAppStatusFilter">Status</label>
+                                    <select class="form-input" id="testerAppStatusFilter" onchange="loadTierTesterApplications()">
+                                        <option value="pending">Pending</option>
+                                        <option value="all">All</option>
+                                        <option value="approved">Approved</option>
+                                        <option value="denied">Denied</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label" for="testerAppSortFilter">Sort</label>
+                                    <select class="form-input" id="testerAppSortFilter" onchange="loadTierTesterApplications()">
+                                        <option value="newest">Newest First</option>
+                                        <option value="oldest">Oldest First</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn btn-secondary" onclick="loadTierTesterApplications()">
+                                    <i class="fas fa-sync-alt"></i> Refresh
+                                </button>
+                            </div>
+                            <div id="tierTesterApplicationsList"><div class="spinner"></div></div>
+                        </div>
+
+                        <div id="blacklistModSection" class="d-none">
+                            <form id="blacklistForm" onsubmit="handleAddBlacklist(event)" class="moderation-form-grid">
+                                <div>
+                                    <label class="form-label" for="blacklistUsername">Minecraft Username</label>
+                                    <input type="text" class="form-input" id="blacklistUsername" required placeholder="PlayerName">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="blacklistReason">Reason</label>
+                                    <input type="text" class="form-input" id="blacklistReason" placeholder="Reason for blacklisting...">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="blacklistUserId">Firebase UID or Minecraft UUID</label>
+                                    <input type="text" class="form-input" id="blacklistUserId" placeholder="Optional target account">
+                                </div>
+                                <div>
+                                    <label class="form-label" for="blacklistDurationHours">Duration (hours)</label>
+                                    <input type="number" class="form-input" id="blacklistDurationHours" min="0" step="1" value="0" placeholder="0 = permanent">
+                                </div>
+                                <div class="moderation-checkbox-grid">
+                                    <label><input type="checkbox" id="blDisableChat"> Chat</label>
+                                    <label><input type="checkbox" id="blDisableQueue"> Queue</label>
+                                    <label><input type="checkbox" id="blDisableQueueJoin"> Queue Join</label>
+                                    <label><input type="checkbox" id="blDisableQueueLeave"> Queue Leave</label>
+                                    <label><input type="checkbox" id="blDisableReports"> Reports</label>
+                                    <label><input type="checkbox" id="blDisableReportSubmit"> Report Submit</label>
+                                    <label><input type="checkbox" id="blDisableAccountChanges"> Account Changes</label>
+                                    <label><input type="checkbox" id="blDisableApplications"> Applications</label>
+                                    <label><input type="checkbox" id="blDisableApplicationsSubmit"> Application Submit</label>
+                                    <label><input type="checkbox" id="blDisableSupportMessages"> Support Messages</label>
+                                </div>
+                                <div>
+                                    <button type="submit" class="btn btn-danger"><i class="fas fa-ban"></i> Add to Blacklist</button>
+                                </div>
+                            </form>
+                            <div class="moderation-filter-row">
+                                <input type="text" class="form-input" id="blacklistSearchInput" placeholder="Filter blacklist">
+                                <select class="form-input" id="blacklistIncludeExpired">
+                                    <option value="false">Active only</option>
+                                    <option value="true">Include expired</option>
+                                </select>
+                                <select class="form-input" id="blacklistPageSize">
+                                    <option value="10">10</option>
+                                    <option value="25" selected>25</option>
+                                    <option value="50">50</option>
+                                </select>
+                                <button type="button" class="btn btn-secondary" onclick="applyBlacklistFilters()"><i class="fas fa-filter"></i> Apply</button>
+                            </div>
+                            <div id="blacklistList"><div class="empty-state"><p class="text-muted">No blacklisted players</p></div></div>
+                            <div id="blacklistPagination" class="moderation-pagination" style="display:none;">
+                                <button class="btn btn-secondary btn-sm" type="button" id="blacklistPrevBtn" onclick="changeBlacklistPage(-1)">Previous</button>
+                                <span id="blacklistPageInfo" class="text-muted"></span>
+                                <button class="btn btn-secondary btn-sm" type="button" id="blacklistNextBtn" onclick="changeBlacklistPage(1)">Next</button>
+                            </div>
+                        </div>
+
+                        <div id="moderatorToolsModSection" class="d-none">
+                            <div class="empty-state">
+                                <p class="text-muted">Chat and leaderboard moderation are available in the dedicated sections above.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="reportedTab" class="tab-content d-none moderation-operation-panel">
+                        <div class="moderation-panel-heading">
+                            <div>
+                                <h3><i class="fas fa-flag"></i> Reports</h3>
+                                <p>Review account, no-show, user, message, and security reports.</p>
+                            </div>
+                        </div>
+                        <div class="moderation-subnav" role="group">
+                            <button type="button" class="btn btn-primary" id="reportsTabAlt" onclick="switchReportsTab('alt')"><i class="fas fa-users"></i> Alt Reports</button>
+                            <button type="button" class="btn btn-secondary" id="reportsTabSecurity" onclick="switchReportsTab('security')"><i class="fas fa-shield-alt"></i> Security Logs</button>
+                            <button type="button" class="btn btn-secondary" id="reportsTabNoShow" onclick="switchReportsTab('noshow')"><i class="fas fa-user-clock"></i> No Show</button>
+                            <button type="button" class="btn btn-secondary" id="reportsTabUser" onclick="switchReportsTab('user')"><i class="fas fa-flag"></i> User Reports</button>
+                            <button type="button" class="btn btn-secondary" id="reportsTabMessages" onclick="switchReportsTab('messages')"><i class="fas fa-comments"></i> Messages</button>
+                        </div>
+                        <div id="altReportsSection">
+                            <form id="reportedSearchForm" onsubmit="handleSearchReported(event)" class="moderation-search-row">
+                                <input type="text" class="form-input" id="reportedSearch" placeholder="Search email, UID, or group ID" required>
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Search</button>
+                            </form>
+                            <div id="reportedAccountsList"><div class="spinner"></div></div>
+                        </div>
+                        <div id="securityLogsSection" class="d-none">
+                            <div class="moderation-filter-row">
+                                <select class="form-input" id="securitySeverityFilter">
+                                    <option value="">All Severities</option>
+                                    <option value="high">High</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="low">Low</option>
+                                </select>
+                                <select class="form-input" id="securityTypeFilter">
+                                    <option value="">All Types</option>
+                                    <option value="rating_manipulation">Rating Manipulation</option>
+                                    <option value="bot_activity">Bot Activity</option>
+                                    <option value="spam">Spam</option>
+                                    <option value="match_rigging">Match Rigging</option>
+                                    <option value="impersonation_attempt">Impersonation</option>
+                                    <option value="account_anomaly">Account Anomaly</option>
+                                </select>
+                                <input type="text" class="form-input" id="securityUserIdFilter" placeholder="User ID">
+                                <button type="button" class="btn btn-primary" onclick="loadSecurityLogs()"><i class="fas fa-filter"></i> Filter</button>
+                            </div>
+                            <div id="securityLogsList"><div class="spinner"></div></div>
+                            <div class="moderation-form-band">
+                                <div>
+                                    <strong><i class="fas fa-check-circle"></i> Security Report Whitelist</strong>
+                                    <p class="text-muted">Accounts listed here will not receive automated security reports.</p>
+                                </div>
+                                <div class="moderation-inline-controls">
+                                    <input type="text" class="form-input" id="whitelistUserInput" placeholder="User ID or email">
+                                    <button type="button" class="btn btn-success" onclick="addToWhitelist()"><i class="fas fa-plus"></i> Whitelist</button>
+                                </div>
+                            </div>
+                            <div id="securityWhitelistList"><div class="spinner"></div></div>
+                        </div>
+                        <div id="noshowReportsSection" class="d-none">
+                            <div class="moderation-filter-row">
+                                <input type="text" class="form-input" id="noshowPlayerFilter" placeholder="Player username or account">
+                                <select class="form-input" id="noshowStatusFilter">
+                                    <option value="">All Status</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="resolved">Resolved</option>
+                                    <option value="dismissed">Dismissed</option>
+                                </select>
+                                <button type="button" class="btn btn-primary" onclick="loadNoshowReports()"><i class="fas fa-search"></i> Search</button>
+                            </div>
+                            <div id="noshowReportsList"><div class="spinner"></div></div>
+                        </div>
+                        <div id="userReportsSection" class="d-none">
+                            <div class="moderation-filter-row">
+                                <input type="text" class="form-input" id="userReportsPlayerFilter" placeholder="Reported player">
+                                <select class="form-input" id="userReportsCategoryFilter">
+                                    <option value="">All Categories</option>
+                                    <option value="alt_account">Alt Account</option>
+                                    <option value="chat_abuse">Chat Abuse</option>
+                                    <option value="unfair_play">Unfair Play</option>
+                                    <option value="match_throwing">Match Throwing</option>
+                                    <option value="impersonation">Impersonation</option>
+                                    <option value="other">Other</option>
+                                </select>
+                                <select class="form-input" id="userReportsStatusFilter">
+                                    <option value="">All Status</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="reviewed">Reviewed</option>
+                                    <option value="resolved">Resolved</option>
+                                    <option value="dismissed">Dismissed</option>
+                                </select>
+                                <button type="button" class="btn btn-primary" onclick="loadUserReports()"><i class="fas fa-search"></i> Search</button>
+                            </div>
+                            <div id="userReportsList"><div class="spinner"></div></div>
+                        </div>
+                        <div id="messageReportsSection" class="d-none">
+                            <div class="moderation-filter-row">
+                                <input type="text" class="form-input" id="messageReportsPlayerFilter" placeholder="Reported player or reporter">
+                                <select class="form-input" id="messageReportsStatusFilter">
+                                    <option value="">All Status</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="reviewed">Reviewed</option>
+                                    <option value="resolved">Resolved</option>
+                                    <option value="dismissed">Dismissed</option>
+                                </select>
+                                <button type="button" class="btn btn-primary" onclick="loadMessageReports()"><i class="fas fa-search"></i> Search</button>
+                            </div>
+                            <div id="messageReportsList"><div class="spinner"></div></div>
+                        </div>
+                    </div>
+
+                    <div id="supportTab" class="tab-content d-none moderation-operation-panel">
+                        <div class="moderation-panel-heading">
+                            <div>
+                                <h3><i class="fas fa-life-ring"></i> Support Tickets</h3>
+                                <p>Review incoming support requests and reply from the staff queue.</p>
+                            </div>
+                            <select class="form-input" id="supportStatusFilter" onchange="loadSupportTickets()">
+                                <option value="active">Active</option>
+                                <option value="open">Open</option>
+                                <option value="awaiting_admin">Awaiting Admin</option>
+                                <option value="awaiting_user">Awaiting User</option>
+                                <option value="resolved">Resolved</option>
+                                <option value="closed">Closed</option>
+                            </select>
+                        </div>
+                        <div class="moderation-two-column">
+                            <div id="supportTicketsList"><div class="spinner"></div></div>
+                            <div id="supportTicketDetail">
+                                <div class="empty-state">
+                                    <i class="fas fa-inbox empty-state-icon"></i>
+                                    <p class="empty-state-title">No support ticket selected</p>
+                                    <p class="empty-state-desc">Pick a request from the queue to review and reply.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="security-scoresTab" class="tab-content d-none moderation-operation-panel">
+                        <div class="moderation-panel-heading">
+                            <div>
+                                <h3><i class="fas fa-shield-alt"></i> Security Scores</h3>
+                                <p>Rank players by fraud and rigging risk from finalized match data.</p>
+                            </div>
+                            <div id="securityTopScore" style="display:none;"></div>
+                        </div>
+                        <div class="moderation-filter-row">
+                            <select id="securityRiskFilter" class="form-input" onchange="loadSecurityScores()">
+                                <option value="">All Risk Levels</option>
+                                <option value="critical">Critical</option>
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
+                                <option value="clean">Clean</option>
+                            </select>
+                            <button class="btn btn-primary" onclick="loadSecurityScores()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                        </div>
+                        <div id="securityScoresList"><div class="spinner"></div></div>
+                    </div>
+
+                    <div id="send-messageTab" class="tab-content d-none moderation-operation-panel">
+                        <div class="moderation-panel-heading">
+                            <div>
+                                <h3><i class="fas fa-envelope"></i> Send Inbox Message</h3>
+                                <p>Send a direct inbox note to a user with optional templates.</p>
+                            </div>
+                        </div>
+                        <form id="sendMessageForm" onsubmit="handleAdminSendMessage(event)" class="moderation-form-grid">
+                            <div>
+                                <label class="form-label" for="msgTargetUserId">Target User ID</label>
+                                <input type="text" class="form-input" id="msgTargetUserId" placeholder="Firebase UID" required>
+                            </div>
+                            <div>
+                                <label class="form-label" for="msgTemplate">Template</label>
+                                <select class="form-input" id="msgTemplate" onchange="applyMessageTemplate()">
+                                    <option value="">Custom Message</option>
+                                    <option value="welcome">Welcome Message</option>
+                                    <option value="policy_reminder">Policy Reminder</option>
+                                    <option value="account_review">Account Under Review</option>
+                                    <option value="restriction_lifted">Restriction Lifted</option>
+                                    <option value="rating_restored">Rating Restored</option>
+                                    <option value="thank_report">Thank You for Report</option>
+                                    <option value="tester_accepted">Tester Application Accepted</option>
+                                    <option value="tester_denied">Tester Application Denied</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label" for="msgTitle">Title</label>
+                                <input type="text" class="form-input" id="msgTitle" placeholder="Message subject" required maxlength="120">
+                            </div>
+                            <div>
+                                <label class="form-label" for="msgType">Category</label>
+                                <select class="form-input" id="msgType">
+                                    <option value="admin_message">Admin Message</option>
+                                    <option value="admin_notice">Admin Notice</option>
+                                    <option value="system">System</option>
+                                </select>
+                            </div>
+                            <div class="moderation-form-wide">
+                                <label class="form-label" for="msgBody">Message</label>
+                                <textarea class="form-textarea" id="msgBody" placeholder="Write message content here..." required style="min-height: 150px;"></textarea>
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-primary" id="sendMsgBtn"><i class="fas fa-paper-plane"></i> Send Message</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div id="bannedTab" class="tab-content d-none moderation-operation-panel">
+                        <div class="moderation-panel-heading">
+                            <div>
+                                <h3><i class="fas fa-user-slash"></i> Account Bans</h3>
+                                <p>Ban Firebase accounts and search existing ban records.</p>
+                            </div>
+                        </div>
+                        <form id="banAccountForm" onsubmit="handleBanAccount(event)" class="moderation-form-grid">
+                            <div>
+                                <label class="form-label" for="banIdentifier">Email or Firebase UID</label>
+                                <input type="text" class="form-input" id="banIdentifier" required placeholder="user@example.com or uid">
+                            </div>
+                            <div>
+                                <label class="form-label" for="banDuration">Duration</label>
+                                <select class="form-input" id="banDuration" required>
+                                    <option value="">Select duration...</option>
+                                    <option value="1h">1 Hour</option>
+                                    <option value="24h">24 Hours</option>
+                                    <option value="7d">7 Days</option>
+                                    <option value="30d">30 Days</option>
+                                    <option value="90d">90 Days</option>
+                                    <option value="permanent">Permanent</option>
+                                </select>
+                            </div>
+                            <div class="moderation-form-wide">
+                                <label class="form-label" for="banReason">Reason</label>
+                                <textarea class="form-textarea" id="banReason" placeholder="Reason for banning this account..."></textarea>
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-danger"><i class="fas fa-ban"></i> Ban Account</button>
+                            </div>
+                        </form>
+                        <form id="searchBannedForm" onsubmit="handleSearchBanned(event)" class="moderation-search-row">
+                            <input type="text" class="form-input" id="bannedSearch" placeholder="Search email, UID, or reason" required>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Search</button>
+                        </form>
+                        <div id="bannedAccountsList"><div class="empty-state"><p class="text-muted">Use the search above to find banned accounts</p></div></div>
+                    </div>
+
+                    <div id="ban-wavesTab" class="tab-content d-none moderation-operation-panel">
+                        <div class="moderation-panel-heading">
+                            <div>
+                                <h3><i class="fas fa-wave-square"></i> Ban Waves</h3>
+                                <p>Create, review, and execute grouped account enforcement.</p>
+                            </div>
+                        </div>
+                        <form id="banWaveForm" onsubmit="handleSaveBanWave(event)" class="moderation-form-grid">
+                            <input type="hidden" id="banWaveId" value="">
+                            <div>
+                                <label class="form-label" for="banWaveName">Name</label>
+                                <input type="text" class="form-input" id="banWaveName" placeholder="Alt detection wave" required maxlength="100">
+                            </div>
+                            <div>
+                                <label class="form-label" for="banWaveStatus">Status</label>
+                                <select class="form-input" id="banWaveStatus">
+                                    <option value="pending">Pending</option>
+                                    <option value="active">Active</option>
+                                    <option value="completed">Completed</option>
+                                </select>
+                            </div>
+                            <div class="moderation-form-wide">
+                                <label class="form-label" for="banWaveDescription">Description</label>
+                                <textarea class="form-textarea" id="banWaveDescription" placeholder="Reason for this ban wave..." style="min-height: 80px;"></textarea>
+                            </div>
+                            <div>
+                                <label class="form-label">Accounts</label>
+                                <div id="banWaveAccountsList" class="ban-wave-list punish-username-list"></div>
+                                <div class="moderation-inline-controls">
+                                    <input type="text" class="form-input" id="banWaveAccountInput" placeholder="Email or Firebase UID...">
+                                    <button type="button" class="btn btn-secondary" onclick="addBanWaveAccount()"><i class="fas fa-plus"></i></button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="form-label" for="banWaveDuration">Default Duration</label>
+                                <select class="form-input" id="banWaveDuration">
+                                    <option value="permanent">Permanent</option>
+                                    <option value="7d">7 Days</option>
+                                    <option value="30d">30 Days</option>
+                                    <option value="90d">90 Days</option>
+                                    <option value="365d">1 Year</option>
+                                </select>
+                            </div>
+                            <div class="moderation-form-wide moderation-inline-controls">
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Ban Wave</button>
+                                <button type="button" class="btn btn-secondary" onclick="resetBanWaveForm()"><i class="fas fa-undo"></i> Reset</button>
+                            </div>
+                        </form>
+                        <div class="moderation-two-column">
+                            <div id="banWavesList"><div class="spinner"></div></div>
+                            <div>
+                                <label class="form-label" for="executeBanWaveSelect">Execute Ban Wave</label>
+                                <select class="form-input" id="executeBanWaveSelect"><option value="">Choose a ban wave...</option></select>
+                                <button type="button" class="btn btn-danger" onclick="executeBanWave()" style="margin-top:1rem;"><i class="fas fa-gavel"></i> Execute Ban Wave</button>
+                                <div id="executeBanWaveResults" style="display:none; margin-top:1rem;"><div id="executeBanWaveResultsContent"></div></div>
+                            </div>
+                        </div>
+                        <form id="whitelistForm" onsubmit="handleAddToWhitelist(event)" class="moderation-search-row">
+                            <input type="text" class="form-input" id="whitelistIdentifier" placeholder="Trust whitelist email or Firebase UID" required>
+                            <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Add Trust Whitelist</button>
+                        </form>
+                        <div id="whitelistList"><div class="spinner"></div></div>
+                    </div>
+
+                    <div id="punishTab" class="tab-content d-none moderation-operation-panel">
+                        <div class="moderation-panel-heading">
+                            <div>
+                                <h3><i class="fas fa-gavel"></i> Bulk Punish</h3>
+                                <p>Apply coordinated enforcement to usernames or Firebase UIDs.</p>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Usernames & Firebase UIDs</label>
+                            <div id="punishUsernameList" class="punish-username-list"></div>
+                            <div class="moderation-inline-controls">
+                                <input type="text" class="form-input" id="punishUsernameInput" placeholder="Enter Minecraft username or Firebase UID...">
+                                <button type="button" class="btn btn-secondary" onclick="addPunishUsername()"><i class="fas fa-plus"></i> Add</button>
+                            </div>
+                        </div>
+                        <div class="moderation-form-grid">
+                            <div>
+                                <label class="form-label" for="punishReason">Reason</label>
+                                <textarea class="form-textarea" id="punishReason" placeholder="Describe the reason..." required style="min-height: 80px;"></textarea>
+                            </div>
+                            <div>
+                                <label class="form-label" for="punishDuration">Ban Duration</label>
+                                <select class="form-input" id="punishDuration">
+                                    <option value="permanent">Permanent</option>
+                                    <option value="168">7 Days</option>
+                                    <option value="336">14 Days</option>
+                                    <option value="720">30 Days</option>
+                                    <option value="2160">90 Days</option>
+                                    <option value="4320">180 Days</option>
+                                    <option value="8760">1 Year</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="moderation-checkbox-grid">
+                            <label><input type="checkbox" id="punishBanFirebase" checked> Ban Firebase Accounts</label>
+                            <label><input type="checkbox" id="punishBlacklistUsernames" checked> Blacklist Usernames</label>
+                            <label><input type="checkbox" id="punishRevertMatches" checked> Revert Matches</label>
+                            <label><input type="checkbox" id="punishNotifyOpponents" checked> Notify Opponents</label>
+                        </div>
+                        <div id="punishPreview" class="alert alert-info" style="display:none;"><h4><i class="fas fa-list-check"></i> Action Preview</h4><div id="punishPreviewContent"></div></div>
+                        <button type="button" class="btn btn-danger btn-lg" onclick="executePunishment()" id="punishExecuteBtn" disabled><i class="fas fa-gavel"></i> Execute Punishment</button>
+                        <div id="punishResults" class="mt-4" style="display:none;"><h4><i class="fas fa-clipboard-check"></i> Execution Results</h4><div id="punishResultsContent"></div></div>
+                    </div>
+                </div>
+            </div>
+        </section>
     </main>
 
     <footer>
@@ -202,6 +675,8 @@
     <script src="js/navigation.js" defer></script>
     <script src="js/ui-enhancements.js" defer></script>
     <script src="js/auth-ui.js" defer></script>
-    <script src="js/moderation-controls.js?v=20260430" defer></script>
+    <script src="js/testing.js" defer></script>
+    <script src="js/admin.js?v=20260501" defer></script>
+    <script src="js/moderation-controls.js?v=20260501" defer></script>
 </body>
 </html>
